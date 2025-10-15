@@ -11,9 +11,7 @@ const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['TEACHER', 'STUDENT'], {
-    errorMap: () => ({ message: 'Role must be TEACHER or STUDENT' }),
-  }),
+  role: z.enum(['TEACHER', 'STUDENT']),
 });
 
 const loginSchema = z.object({
@@ -99,7 +97,7 @@ export async function signup(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 
@@ -138,7 +136,7 @@ export async function login(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 

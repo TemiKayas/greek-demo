@@ -20,7 +20,7 @@ export default function LoginPage() {
         if (!result.success) {
           setError(result.error);
         }
-      } catch (error) {
+      } catch {
         // NextAuth redirects on success, which throws an error
         // So we catch it and manually redirect
         router.push('/');

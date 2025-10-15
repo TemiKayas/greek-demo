@@ -4,8 +4,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { uploadPDF } from '@/lib/blob';
 import { extractTextFromPDF, validatePDF } from '@/lib/processors/pdf-processor';
-import { generateQuiz } from '@/lib/processors/ai-generator';
-import { redirect } from 'next/navigation';
+import { generateQuiz, Quiz } from '@/lib/processors/ai-generator';
 
 type ActionResult<T> =
   | { success: true; data: T }
@@ -13,7 +12,7 @@ type ActionResult<T> =
 
 export async function uploadAndProcessPDF(
   formData: FormData
-): Promise<ActionResult<{ quizId: string; quiz: any }>> {
+): Promise<ActionResult<{ quizId: string; quiz: Quiz }>> {
   try {
     // Check authentication
     const session = await auth();
@@ -93,7 +92,7 @@ export async function uploadAndProcessPDF(
         processedContentId: processedContent.id,
         title: `Quiz: ${file.name}`,
         numQuestions: quiz.questions.length,
-        quizJson: quiz,
+        quizJson: JSON.parse(JSON.stringify(quiz)),
       },
     });
 

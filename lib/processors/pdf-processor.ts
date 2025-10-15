@@ -1,18 +1,9 @@
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import for pdf-parse - it exports PDFParse as a class
-    const { PDFParse, VerbosityLevel } = await import('pdf-parse');
-    const parser = new PDFParse({
-      verbosity: VerbosityLevel.ERRORS,
-    });
-
-    // Load the PDF first
-    await parser.load(buffer);
-
-    // Then extract text
-    const text = await parser.getText();
-
-    return text;
+    // Dynamic import for pdf-parse
+    const pdf = (await import('pdf-parse')).default;
+    const data = await pdf(buffer);
+    return data.text;
   } catch (error) {
     console.error('PDF extraction error:', error);
     throw new Error('Failed to extract text from PDF');
