@@ -1,13 +1,12 @@
-import { auth } from '@/lib/auth';
-import { signOut } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+'use client';
 
-export default async function TeacherDashboard() {
-  const session = await auth();
+import { useState } from 'react';
+import { signOut } from 'next-auth/react';
+import PDFUploadForm from '../components/PDFUploadForm';
+import QuizDisplay from '../components/QuizDisplay';
 
-  if (!session?.user) {
-    redirect('/login');
-  }
+export default function TeacherDashboard() {
+  const [currentQuiz, setCurrentQuiz] = useState<any>(null);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -15,54 +14,57 @@ export default async function TeacherDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-blue-600">WordWyrm</h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {session.user.name} (Teacher)
-              </span>
-              <form
-                action={async () => {
-                  'use server';
-                  await signOut({ redirectTo: '/' });
-                }}
-              >
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
-                >
-                  Sign Out
-                </button>
-              </form>
-            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-4">Teacher Dashboard</h2>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-2">Teacher Dashboard</h2>
           <p className="text-gray-600">
-            Welcome to your teacher dashboard! This is where you&apos;ll be able
-            to upload PDFs, create quizzes, and manage games.
+            Upload a PDF and generate an AI-powered quiz instantly
           </p>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold text-lg mb-2">Upload PDF</h3>
-              <p className="text-sm text-gray-600">
-                Upload course materials to generate quizzes
-              </p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold text-lg mb-2">My Quizzes</h3>
-              <p className="text-sm text-gray-600">
-                View and manage your generated quizzes
-              </p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold text-lg mb-2">My Games</h3>
-              <p className="text-sm text-gray-600">
-                Create and share quiz games with students
-              </p>
-            </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <PDFUploadForm onQuizGenerated={setCurrentQuiz} />
+          </div>
+
+          <div>
+            {currentQuiz ? (
+              <QuizDisplay quiz={currentQuiz} />
+            ) : (
+              <div className="bg-white rounded-lg shadow p-6 text-center">
+                <div className="py-12">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No quiz yet
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Upload a PDF to generate your first quiz
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
