@@ -1,12 +1,25 @@
+import pdf from 'pdf-parse';
+
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import for pdf-parse
-    const pdf = (await import('pdf-parse')).default;
+    // Ensure we have a valid Buffer
+    if (!Buffer.isBuffer(buffer)) {
+      throw new Error('Invalid buffer provided to PDF extractor');
+    }
+
+    console.log('Buffer received, size:', buffer.length, 'bytes');
+
+    // Parse the PDF buffer using pdf-parse
     const data = await pdf(buffer);
+
+    console.log('PDF parsed successfully, text length:', data.text.length);
     return data.text;
   } catch (error) {
     console.error('PDF extraction error:', error);
-    throw new Error('Failed to extract text from PDF');
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

@@ -61,7 +61,14 @@ export async function uploadAndProcessPDF(
 
     // Extract text from PDF
     console.log('Extracting text from PDF...');
-    const buffer = Buffer.from(await file.arrayBuffer());
+    console.log('File details:', { name: file.name, size: file.size, type: file.type });
+
+    const arrayBuffer = await file.arrayBuffer();
+    console.log('ArrayBuffer size:', arrayBuffer.byteLength);
+
+    const buffer = Buffer.from(arrayBuffer);
+    console.log('Buffer created, size:', buffer.length, 'isBuffer:', Buffer.isBuffer(buffer));
+
     const extractedText = await extractTextFromPDF(buffer);
 
     if (!extractedText || extractedText.length < 100) {
