@@ -109,3 +109,33 @@ export async function getAllPDFs() {
     return { success: false, error: 'Failed to fetch PDFs' };
   }
 }
+
+export async function deletePDF(pdfId: string): Promise<ActionResult<void>> {
+  try {
+    // Get the PDF record to find the file path
+    const pdf = await db.pDF.findUnique({
+      where: { id: pdfId },
+    });
+
+    if (!pdf) {
+      return { success: false, error: 'PDF not found' };
+    }
+
+    // Delete the file from filesystem
+    const { deletePDF: deleteFile } = await import('@/lib/blob');
+    await deleteFile(pdf.filePath);
+
+    // Delete from database (cascade will handle related records)
+    await db.pDF.delete({
+      where: { id: pdfId },
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete PDF',
+    };
+  }
+}
