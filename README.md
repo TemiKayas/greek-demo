@@ -1,40 +1,54 @@
-# WordWyrm 🐉
+# Modern Greek Education Demo
 
-An AI-powered education platform that transforms PDFs into interactive quizzes. Teachers upload study materials, generate quiz games, and share them with students via QR codes or links.
+A simple MVP platform demonstrating AI-powered educational tools for Modern Greek language learning. This local demo showcases three core features: a RAG chatbot, worksheet generation, and flashcard creation - all powered by PDF materials.
+
+## Overview
+
+This project is a proof-of-concept for educational tools that will be integrated into a larger Modern Greek education app. It demonstrates how AI can transform static PDF learning materials into interactive, engaging study resources.
 
 ## Features
 
-- **PDF Processing**: Upload PDFs up to 25MB, automatically extract text
-- **AI Quiz Generation**: Generate multiple-choice quizzes using Google Gemini
-- **Game Sharing**: Create shareable quiz games with QR codes
-- **Student Tracking**: Monitor student performance and progress
-- **Role-Based Access**: Separate experiences for teachers and students
+### 1. RAG Chatbot
+- Upload Greek language PDFs (textbooks, lessons, articles)
+- Chat with an AI that retrieves relevant information from your materials
+- Ask questions about grammar, vocabulary, or content in the PDFs
+- Get contextual answers based on the uploaded materials
+
+### 2. Worksheet Generator
+- Automatically create practice worksheets from PDF content
+- Generate exercises based on the material (fill-in-the-blank, comprehension questions, etc.)
+- Customizable difficulty levels
+- Export worksheets for classroom use
+
+### 3. Flashcard Builder
+- Extract key vocabulary and concepts from PDFs
+- Auto-generate flashcards with Greek terms and definitions
+- Support for Greek-English and English-Greek cards
+- Review mode for studying
 
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Database**: Vercel Postgres (PostgreSQL)
+- **Styling**: Tailwind CSS + DaisyUI
+- **Database**: SQLite (via Prisma)
 - **ORM**: Prisma
-- **Authentication**: NextAuth.js v5
-- **File Storage**: Vercel Blob Storage
+- **File Storage**: Local filesystem
 - **AI**: Google Gemini API
-- **Deployment**: Vercel
+- **PDF Processing**: pdf-parse
 
-## Getting Started
+## Local Setup
 
 ### Prerequisites
 
 - Node.js 18+ installed
 - npm or yarn
-- Vercel account (for deployment)
-- Google Gemini API key
+- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
 
 ### 1. Clone & Install
 
 ```bash
-cd wordwyrm
+cd greek-demo
 npm install
 ```
 
@@ -43,62 +57,35 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
-# Database (Get these from Vercel Postgres)
-DATABASE_URL="postgres://default:xxx@xxx.us-east-1.postgres.vercel-storage.com:5432/verceldb"
-POSTGRES_PRISMA_URL="postgres://default:xxx@xxx.us-east-1.postgres.vercel-storage.com:5432/verceldb?pgbouncer=true&connect_timeout=15"
-POSTGRES_URL_NON_POOLING="postgres://default:xxx@xxx.us-east-1.postgres.vercel-storage.com:5432/verceldb"
-
-# Authentication
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-here"
+# Database (SQLite - local file)
+DATABASE_URL="file:./dev.db"
 
 # Google Gemini API
 GEMINI_API_KEY="your-gemini-api-key-here"
 
-# Vercel Blob Storage (Get this from Vercel)
-BLOB_READ_WRITE_TOKEN="vercel_blob_rw_xxx"
+# File Upload Directory (optional - defaults to ./uploads)
+UPLOAD_DIR="./uploads"
 ```
 
-#### Where to Find Environment Variables
+#### Getting Your Gemini API Key
 
-##### Database URLs (Vercel Postgres)
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Create a new project or select existing
-3. Go to **Storage** tab
-4. Click **Create Database** → **Postgres**
-5. After creation, go to **Settings** → **.env.local** tab
-6. Copy all `POSTGRES_*` variables
-
-##### NextAuth Secret
-Generate a secure secret:
-```bash
-openssl rand -base64 32
-```
-Or use: https://generate-secret.vercel.app/32
-
-##### Gemini API Key
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Click **Get API Key**
-3. Create new API key or use existing
-4. Copy the key
-
-##### Blob Storage Token
-1. In Vercel Dashboard, go to **Storage** tab
-2. Click **Create Database** → **Blob**
-3. After creation, copy the `BLOB_READ_WRITE_TOKEN`
+3. Create a new API key or use an existing one
+4. Copy the key and paste it in `.env.local`
 
 ### 3. Database Setup
 
-Initialize and migrate your database:
+Initialize the SQLite database:
 
 ```bash
 # Generate Prisma Client
 npx prisma generate
 
-# Run migrations (creates tables)
-npx prisma migrate dev --name init
+# Create the database and tables
+npx prisma db push
 
-# Optional: Open Prisma Studio to view database
+# Optional: Open Prisma Studio to view your local database
 npx prisma studio
 ```
 
@@ -110,48 +97,40 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 5. Create Your First Account
+### 5. Try It Out!
 
-1. Navigate to `/signup`
-2. Choose **Teacher** role
-3. Create account and log in
-4. Upload a PDF and generate a quiz!
+1. Upload a Greek language PDF (or any educational PDF)
+2. Wait for it to be processed
+3. Try the RAG chatbot to ask questions about the content
+4. Generate a worksheet or flashcards from the material
 
 ## Project Structure
 
 ```
-wordwyrm/
+greek-demo/
 ├── app/                    # Next.js App Router
-│   ├── (auth)/            # Authentication pages
-│   │   ├── login/
-│   │   └── signup/
-│   ├── (teacher)/         # Teacher dashboard
-│   │   ├── dashboard/
-│   │   ├── upload/
-│   │   └── games/
-│   ├── (student)/         # Student dashboard
-│   │   ├── dashboard/
-│   │   └── history/
-│   ├── play/              # Public game pages
-│   ├── actions/           # Server Actions
-│   └── api/               # API Routes
+│   ├── page.tsx           # Home page
+│   ├── upload/            # PDF upload interface
+│   ├── chat/              # RAG chatbot interface
+│   ├── materials/         # Worksheet & flashcard generators
+│   └── actions/           # Server Actions
 ├── components/            # React Components
-│   ├── auth/
-│   ├── teacher/
-│   ├── student/
-│   └── shared/
+│   ├── upload/
+│   ├── chat/
+│   └── materials/
 ├── lib/                   # Utilities & Config
-│   ├── auth.ts           # NextAuth config
 │   ├── db.ts             # Prisma client
-│   ├── blob.ts           # Vercel Blob helpers
 │   ├── processors/       # Business logic
 │   │   ├── pdf-processor.ts
-│   │   └── ai-generator.ts
+│   │   ├── rag.ts
+│   │   ├── worksheet-generator.ts
+│   │   └── flashcard-generator.ts
 │   └── utils/            # Utility functions
 ├── prisma/               # Database schema
-│   └── schema.prisma
-├── public/               # Static assets
-└── types/                # TypeScript types
+│   ├── schema.prisma     # Database models
+│   └── dev.db            # SQLite database (generated)
+├── uploads/              # Uploaded PDF files (generated)
+└── public/               # Static assets
 ```
 
 ## Development Workflow
@@ -159,76 +138,33 @@ wordwyrm/
 ### Making Database Changes
 
 1. Edit `prisma/schema.prisma`
-2. Create migration:
+2. Push changes to your local database:
    ```bash
-   npx prisma migrate dev --name your_migration_name
+   npx prisma db push
    ```
-3. Generate Prisma Client:
+3. Regenerate Prisma Client:
    ```bash
    npx prisma generate
    ```
 
 ### Adding New Features
 
-1. Check `TODO.md` for planned features
+1. Check `TODO.txt` for planned features
 2. Create necessary database models in `schema.prisma`
 3. Write Server Actions in `app/actions/`
 4. Create UI components in `components/`
 5. Add pages in `app/`
 
-### Testing Locally
+## Database Schema
 
-1. Create test accounts (teacher + student)
-2. Upload sample PDFs (find test PDFs in old project)
-3. Generate quizzes
-4. Create games
-5. Test student flow with share codes
+### Simplified Schema for MVP
 
-## Deployment
+- **User**: Demo user (minimal fields)
+- **PDF**: Uploaded PDF files and metadata
+- **ProcessedContent**: Extracted text from PDFs for RAG
+- **Material**: Generated worksheets and flashcards
 
-### Deploy to Vercel
-
-1. Push code to GitHub
-2. Import repository in [Vercel](https://vercel.com/new)
-3. Configure environment variables in Vercel dashboard
-4. Deploy!
-
-Vercel will automatically:
-- Install dependencies
-- Run build
-- Deploy to edge network
-
-### Post-Deployment Setup
-
-1. **Run Database Migrations:**
-   ```bash
-   vercel env pull .env.local  # Pull production env vars
-   npx prisma migrate deploy   # Run migrations in production
-   ```
-
-2. **Test Production:**
-   - Sign up as teacher
-   - Upload PDF
-   - Generate quiz
-   - Create game
-   - Test student flow
-
-3. **Set Up Monitoring:**
-   - Enable Vercel Analytics
-   - Monitor Function logs
-   - Check error rates
-
-## Environment Variables Reference
-
-| Variable | Description | Required | Where to Get |
-|----------|-------------|----------|--------------|
-| `DATABASE_URL` | Main database connection | ✅ | Vercel Postgres |
-| `POSTGRES_PRISMA_URL` | Prisma connection with pooling | ✅ | Vercel Postgres |
-| `POSTGRES_URL_NON_POOLING` | Direct connection (for migrations) | ✅ | Vercel Postgres |
-| `NEXTAUTH_URL` | Your app URL | ✅ | `http://localhost:3000` (dev) or your domain (prod) |
-| `NEXTAUTH_SECRET` | Auth secret key | ✅ | Generate with `openssl rand -base64 32` |
-| `GEMINI_API_KEY` | Google Gemini API key | ✅ | [Google AI Studio](https://makersuite.google.com/app/apikey) |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob storage token | ✅ | Vercel Blob Storage dashboard |
+See `prisma/schema.prisma` for the full schema definition.
 
 ## Useful Commands
 
@@ -243,19 +179,10 @@ npm run lint         # Run ESLint
 ### Database
 ```bash
 npx prisma studio              # Open database GUI
-npx prisma migrate dev         # Create and apply migration
-npx prisma migrate deploy      # Apply migrations (production)
+npx prisma db push             # Push schema changes to database
 npx prisma generate            # Generate Prisma Client
-npx prisma db push             # Push schema without migration (dev only)
-npx prisma db seed             # Run seed script
-```
-
-### Vercel
-```bash
-vercel                         # Deploy to preview
-vercel --prod                  # Deploy to production
-vercel env pull .env.local     # Pull environment variables
-vercel logs                    # View deployment logs
+npx prisma db seed             # Run seed script (if configured)
+npx prisma migrate dev         # Create a migration (for version control)
 ```
 
 ## Troubleshooting
@@ -266,71 +193,47 @@ npx prisma generate
 ```
 
 ### "Cannot connect to database"
-- Check `DATABASE_URL` in `.env.local`
-- Ensure Vercel Postgres is provisioned
-- Try using `POSTGRES_URL_NON_POOLING` instead
-
-### "NextAuth configuration error"
-- Ensure `NEXTAUTH_URL` matches your current URL
-- Regenerate `NEXTAUTH_SECRET`
-- Clear browser cookies
+- Check that `DATABASE_URL` is set to `file:./dev.db` in `.env.local`
+- Try deleting `prisma/dev.db` and running `npx prisma db push` again
 
 ### "Gemini API error"
-- Verify `GEMINI_API_KEY` is correct
-- Check API quota in Google Cloud Console
-- Ensure billing is enabled (if required)
+- Verify `GEMINI_API_KEY` is correct in `.env.local`
+- Check your API quota in [Google Cloud Console](https://console.cloud.google.com)
+- Ensure billing is enabled (if required for your usage level)
 
-### "Blob upload failed"
-- Verify `BLOB_READ_WRITE_TOKEN` is set
-- Check file size (max 25MB)
-- Ensure Vercel Blob storage is provisioned
+### "pdf-parse errors"
+- Make sure you restarted the dev server after installation
+- Try reinstalling: `npm install pdf-parse`
 
-### Build fails on Vercel
-- Check build logs
-- Ensure all environment variables are set
-- Try building locally: `npm run build`
+### File upload not working
+- Check that `UPLOAD_DIR` exists (create `./uploads` folder if needed)
+- Verify file permissions on the uploads directory
 
-## Migrating from Old Project
+## Future Features (See TODO.txt)
 
-If you have data from the previous Django + Supabase setup:
+This is an MVP demo. Planned enhancements include:
 
-1. **Export Data:**
-   - Export PDFs from Supabase Storage
-   - Export database records to JSON/CSV
-
-2. **Transform Data:**
-   - Map old schema to new Prisma schema
-   - Update references and IDs
-
-3. **Import Data:**
-   - Use Prisma Client to insert data
-   - Upload PDFs to Vercel Blob
-   - Update blob URLs in database
-
-See `CLAUDE.md` for detailed migration scripts.
-
-## Documentation
-
-- **TODO.md**: Detailed development roadmap and tasks
-- **CLAUDE.md**: Technical implementation notes and patterns
-- **README.md**: This file - setup and usage guide
+- **Enhanced RAG**: Vector embeddings for better semantic search
+- **More Material Types**: Quizzes, comprehension exercises, writing prompts
+- **Greek-Specific Tools**: Grammar checkers, accent mark practice, conjugation drills
+- **Export Options**: PDF, DOCX, and printable formats
+- **User Accounts**: Save and organize materials
+- **Multi-language**: Support for other languages beyond Greek
 
 ## Resources
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Prisma Documentation](https://www.prisma.io/docs)
-- [NextAuth.js Documentation](https://authjs.dev)
-- [Vercel Documentation](https://vercel.com/docs)
 - [Google Gemini API](https://ai.google.dev/docs)
 - [Tailwind CSS](https://tailwindcss.com/docs)
+- [DaisyUI Components](https://daisyui.com)
 
 ## Support
 
 For questions or issues:
-- Check `TODO.md` for planned features
-- Read `CLAUDE.md` for implementation details
-- Review Vercel logs for errors
-- Check Prisma Studio for database issues
+- Check `TODO.txt` for development roadmap
+- Review `CLAUDE.md` for technical implementation notes
+- Open an issue on GitHub (if applicable)
 
 ## License
 
@@ -338,4 +241,4 @@ MIT
 
 ---
 
-**Built with ❤️ using Next.js, Prisma, and Google Gemini**
+**Built for Modern Greek education with Next.js, Prisma, and Google Gemini**

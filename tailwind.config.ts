@@ -9,16 +9,16 @@ const config = {
   theme: {
     extend: {
       colors: {
-        cream: '#fffaf2',
-        'cream-dark': '#fffcf8',
-        'cream-light': '#fff6e8',
-        brown: '#473025',
-        'brown-dark': '#3a261e',
-        orange: '#ff9f22',
-        'orange-light': '#ffb554',
-        lime: '#96b902',
-        'lime-dark': '#7a9700',
-        white: '#fffdfa',
+        // Greek-inspired colors
+        'greek-blue': '#0D5EAF',
+        'greek-blue-dark': '#074a8e',
+        'greek-blue-light': '#3d7ec4',
+        'aegean': '#1E88E5',
+        'mediterranean': '#0277BD',
+        terracotta: '#D4764E',
+        'ancient-gold': '#D4AF37',
+        'marble-white': '#F8F9FA',
+        'olive': '#6B8E23',
       },
       fontFamily: {
         quicksand: ['Quicksand', 'sans-serif'],
@@ -51,29 +51,29 @@ const config = {
   daisyui: {
     themes: [
       {
-        wordwyrm: {
-          primary: '#96b902',
+        greek: {
+          primary: '#0D5EAF',           // Greek blue
           'primary-content': '#ffffff',
-          secondary: '#ff9f22',
+          secondary: '#1E88E5',         // Aegean blue
           'secondary-content': '#ffffff',
-          accent: '#ffb554',
-          'accent-content': '#473025',
-          neutral: '#473025',
+          accent: '#D4AF37',            // Ancient gold
+          'accent-content': '#ffffff',
+          neutral: '#2c3e50',           // Dark slate
           'neutral-content': '#ffffff',
-          'base-100': '#fffaf2',
-          'base-200': '#fffcf8',
-          'base-300': '#fff6e8',
-          'base-content': '#473025',
-          info: '#3b82f6',
+          'base-100': '#ffffff',        // White (Greek flag)
+          'base-200': '#F8F9FA',        // Marble white
+          'base-300': '#e8eaed',        // Light grey
+          'base-content': '#1a202c',    // Dark text
+          info: '#1E88E5',
           'info-content': '#ffffff',
-          success: '#96b902',
+          success: '#6B8E23',           // Olive
           'success-content': '#ffffff',
-          warning: '#ff9f22',
+          warning: '#D4764E',           // Terracotta
           'warning-content': '#ffffff',
-          error: '#ef4444',
+          error: '#dc2626',
           'error-content': '#ffffff',
-          '--rounded-btn': '1rem',
-          '--rounded-box': '1rem',
+          '--rounded-btn': '0.5rem',
+          '--rounded-box': '0.75rem',
         },
       },
     ],

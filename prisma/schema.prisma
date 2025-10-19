@@ -6,100 +6,21 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 // ============================================================================
-// USER & AUTHENTICATION
+// SIMPLIFIED USER MODEL (for demo purposes)
 // ============================================================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  name          String
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
 
   // Relations
-  teacherProfile  Teacher?
-  studentProfile  Student?
-  accounts        Account[]
-  sessions        Session[]
-}
-
-enum Role {
-  TEACHER
-  STUDENT
-  ADMIN
-}
-
-// NextAuth.js models
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-// ============================================================================
-// USER PROFILES
-// ============================================================================
-
-model Teacher {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  school    String?
-  bio       String?  @db.Text
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pdfs      PDF[]
-  games     Game[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Student {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  grade     String?
-
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gameSessions  GameSession[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  pdfs PDF[]
 }
 
 // ============================================================================
@@ -108,89 +29,45 @@ model Student {
 
 model PDF {
   id              String    @id @default(cuid())
-  teacherId       String
+  userId          String
   filename        String
-  blobUrl         String    // Vercel Blob storage URL
+  filePath        String    // Local file path for stored PDF
   fileSize        Int
   mimeType        String    @default("application/pdf")
   uploadedAt      DateTime  @default(now())
 
-  teacher           Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   processedContent  ProcessedContent?
-
-  @@index([teacherId])
+  materials         Material[]
 }
 
 model ProcessedContent {
   id            String   @id @default(cuid())
   pdfId         String   @unique
-  extractedText String   @db.Text
+  extractedText String
   textLength    Int
   processedAt   DateTime @default(now())
 
-  pdf     PDF     @relation(fields: [pdfId], references: [id], onDelete: Cascade)
-  quizzes Quiz[]
-
-  @@index([pdfId])
+  pdf PDF @relation(fields: [pdfId], references: [id], onDelete: Cascade)
 }
 
 // ============================================================================
-// QUIZ & GAME MANAGEMENT
+// GENERATED MATERIALS (Worksheets, Flashcards, etc.)
 // ============================================================================
 
-model Quiz {
-  id                  String   @id @default(cuid())
-  processedContentId  String
-  title               String?
-  numQuestions        Int      @default(5)
-  quizJson            Json     // Store the quiz questions/answers as JSON
-  createdAt           DateTime @default(now())
-
-  processedContent  ProcessedContent  @relation(fields: [processedContentId], references: [id], onDelete: Cascade)
-  games             Game[]
-
-  @@index([processedContentId])
-}
-
-model Game {
-  id          String    @id @default(cuid())
-  quizId      String
-  teacherId   String
+model Material {
+  id          String       @id @default(cuid())
+  pdfId       String
+  type        MaterialType
   title       String
-  description String?   @db.Text
-  shareCode   String    @unique // Short code for joining (e.g., "ABC123")
-  qrCodeUrl   String?   // Vercel Blob URL for QR code image
-  active      Boolean   @default(true)
-  maxAttempts Int       @default(1) // How many times can a student play
-  timeLimit   Int?      // Time limit in seconds (optional)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  content     String       // JSON content for the material
+  createdAt   DateTime     @default(now())
 
-  quiz          Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  teacher       Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  gameSessions  GameSession[]
-
-  @@index([teacherId])
-  @@index([shareCode])
-  @@index([active])
+  pdf PDF @relation(fields: [pdfId], references: [id], onDelete: Cascade)
 }
 
-model GameSession {
-  id          String    @id @default(cuid())
-  gameId      String
-  studentId   String
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-  score       Int?
-  totalQuestions Int?
-  correctAnswers Int?
-  timeSpent   Int?      // Time spent in seconds
-  answersJson Json?     // Store student answers if needed for review
-
-  game    Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([gameId, studentId])
-  @@index([gameId])
-  @@index([studentId])
+enum MaterialType {
+  WORKSHEET
+  FLASHCARD
+  QUIZ
 }

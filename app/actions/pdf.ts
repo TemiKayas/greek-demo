@@ -1,10 +1,8 @@
 'use server';
 
-import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { uploadPDF } from '@/lib/blob';
 import { extractTextFromPDF, validatePDF } from '@/lib/processors/pdf-processor';
-import { generateQuiz, Quiz } from '@/lib/processors/ai-generator';
 
 type ActionResult<T> =
   | { success: true; data: T }
@@ -12,23 +10,8 @@ type ActionResult<T> =
 
 export async function uploadAndProcessPDF(
   formData: FormData
-): Promise<ActionResult<{ quizId: string; quiz: Quiz }>> {
+): Promise<ActionResult<{ pdfId: string; extractedText: string }>> {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user || session.user.role !== 'TEACHER') {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    // Get teacher profile
-    const teacher = await db.teacher.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!teacher) {
-      return { success: false, error: 'Teacher profile not found' };
-    }
-
     // Get and validate file
     const file = formData.get('pdf') as File;
     if (!file) {
@@ -40,20 +23,27 @@ export async function uploadAndProcessPDF(
       return { success: false, error: validation.error! };
     }
 
-    // Get number of questions (default 5)
-    const numQuestions = parseInt(formData.get('numQuestions') as string) || 5;
+    // Get or create default user
+    let user = await db.user.findFirst();
+    if (!user) {
+      user = await db.user.create({
+        data: {
+          name: 'Demo User',
+        },
+      });
+    }
 
-    // Upload to Vercel Blob
-    console.log('Uploading PDF to Vercel Blob...');
-    const blobUrl = await uploadPDF(file);
+    // Upload to local filesystem
+    console.log('Saving PDF to local filesystem...');
+    const filePath = await uploadPDF(file);
 
     // Save PDF record
     console.log('Saving PDF record to database...');
     const pdfRecord = await db.pDF.create({
       data: {
-        teacherId: teacher.id,
+        userId: user.id,
         filename: file.name,
-        blobUrl,
+        filePath,
         fileSize: file.size,
         mimeType: file.type,
       },
@@ -61,14 +51,8 @@ export async function uploadAndProcessPDF(
 
     // Extract text from PDF
     console.log('Extracting text from PDF...');
-    console.log('File details:', { name: file.name, size: file.size, type: file.type });
-
     const arrayBuffer = await file.arrayBuffer();
-    console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-
     const buffer = Buffer.from(arrayBuffer);
-    console.log('Buffer created, size:', buffer.length, 'isBuffer:', Buffer.isBuffer(buffer));
-
     const extractedText = await extractTextFromPDF(buffer);
 
     if (!extractedText || extractedText.length < 100) {
@@ -80,7 +64,7 @@ export async function uploadAndProcessPDF(
 
     // Save processed content
     console.log('Saving processed content...');
-    const processedContent = await db.processedContent.create({
+    await db.processedContent.create({
       data: {
         pdfId: pdfRecord.id,
         extractedText,
@@ -88,26 +72,11 @@ export async function uploadAndProcessPDF(
       },
     });
 
-    // Generate quiz using Gemini
-    console.log('Generating quiz with Gemini AI...');
-    const quiz = await generateQuiz(extractedText, numQuestions);
-
-    // Save quiz
-    console.log('Saving quiz to database...');
-    const quizRecord = await db.quiz.create({
-      data: {
-        processedContentId: processedContent.id,
-        title: `Quiz: ${file.name}`,
-        numQuestions: quiz.questions.length,
-        quizJson: JSON.parse(JSON.stringify(quiz)),
-      },
-    });
-
     return {
       success: true,
       data: {
-        quizId: quizRecord.id,
-        quiz: quiz,
+        pdfId: pdfRecord.id,
+        extractedText: extractedText.substring(0, 500) + '...', // Return preview
       },
     };
   } catch (error) {
@@ -119,5 +88,24 @@ export async function uploadAndProcessPDF(
           ? error.message
           : 'Failed to process PDF. Please try again.',
     };
+  }
+}
+
+export async function getAllPDFs() {
+  try {
+    const pdfs = await db.pDF.findMany({
+      include: {
+        processedContent: true,
+        materials: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
+    });
+
+    return { success: true, data: pdfs };
+  } catch (error) {
+    console.error('Error fetching PDFs:', error);
+    return { success: false, error: 'Failed to fetch PDFs' };
   }
 }

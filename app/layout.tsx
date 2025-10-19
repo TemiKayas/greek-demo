@@ -19,8 +19,8 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: "WordWyrm - Transform PDFs into Engaging Quizzes",
-  description: "Create interactive quizzes from PDFs using AI-powered content generation",
+  title: "Modern Greek Education Tools",
+  description: "AI-powered tools for Modern Greek learning: RAG chatbot, worksheet generator, and flashcard builder",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="wordwyrm">
+    <html lang="en" data-theme="greek">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} antialiased`}
       >

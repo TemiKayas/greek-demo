@@ -42,3 +42,13 @@ next-env.d.ts
 
 /lib/generated/prisma
 .env*.local
+
+# SQLite database (local demo)
+prisma/*.db
+prisma/*.db-journal
+*.db
+*.db-journal
+
+# Uploaded files (local storage)
+/uploads/
+uploads/

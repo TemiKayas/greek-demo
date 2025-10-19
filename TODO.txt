@@ -1,0 +1,198 @@
+# Modern Greek Education Demo - MVP TODO
+# ========================================
+# Simple, local-only demo for Modern Greek education tools
+# Focus: RAG chatbot, worksheet generation, flashcard creation
+
+## PHASE 1: Core Setup & PDF Processing
+# =======================================
+# Goal: Get basic PDF upload and processing working locally
+
+[ ] 1.1 Setup & Infrastructure
+    [ ] Update .env.local with SQLite and Gemini API key
+    [ ] Create uploads/ directory for local file storage
+    [ ] Test Prisma DB connection with SQLite
+    [ ] Verify pdf-parse installation and functionality
+
+[ ] 1.2 PDF Upload & Storage
+    [ ] Create simple upload page/component
+    [ ] Implement file upload to local filesystem (./uploads)
+    [ ] Save PDF metadata to SQLite database
+    [ ] Add basic file validation (size, type)
+
+[ ] 1.3 PDF Processing
+    [ ] Extract text from PDF using pdf-parse
+    [ ] Store extracted text in ProcessedContent table
+    [ ] Handle errors (empty PDFs, scanned PDFs, etc.)
+    [ ] Add loading states and progress indicators
+
+## PHASE 2: RAG Chatbot (MVP)
+# ============================
+# Goal: Simple chatbot that answers questions from PDF content
+
+[ ] 2.1 Basic RAG Implementation
+    [ ] Create chat interface component
+    [ ] Implement simple text search in ProcessedContent
+    [ ] Send relevant chunks + user question to Gemini
+    [ ] Display AI response in chat UI
+
+[ ] 2.2 Context Retrieval (Simple)
+    [ ] Split extracted text into chunks (~500 words each)
+    [ ] Find relevant chunks using keyword matching (no embeddings for MVP)
+    [ ] Limit context to top 3-5 most relevant chunks
+    [ ] Handle cases where no relevant content is found
+
+[ ] 2.3 Chat UI/UX
+    [ ] Create message thread display
+    [ ] Add user input field
+    [ ] Show typing indicator while AI responds
+    [ ] Display PDF source for each response
+    [ ] Add "clear chat" functionality
+
+## PHASE 3: Worksheet Generator
+# ==============================
+# Goal: Generate practice worksheets from PDF content
+
+[ ] 3.1 Worksheet Generation Logic
+    [ ] Create worksheet-generator.ts in lib/processors/
+    [ ] Use Gemini to generate exercises from text chunks
+    [ ] Support types: fill-in-blank, multiple choice, short answer
+    [ ] Store generated worksheets in Material table
+
+[ ] 3.2 Worksheet Templates
+    [ ] Design simple worksheet format (JSON structure)
+    [ ] Create display component for worksheets
+    [ ] Add options: difficulty level, number of questions
+    [ ] Include Greek-specific exercises (accents, grammar)
+
+[ ] 3.3 Export Functionality (Basic)
+    [ ] Generate printable HTML view
+    [ ] Add "Print" button (browser print dialog)
+    [ ] Optional: Export to plain text/markdown
+    [ ] Save generated worksheets to database
+
+## PHASE 4: Flashcard Builder
+# ============================
+# Goal: Auto-generate flashcards from PDF vocabulary
+
+[ ] 4.1 Flashcard Generation
+    [ ] Extract key terms/vocabulary from PDF text
+    [ ] Use Gemini to create term + definition pairs
+    [ ] Support Greek-English and English-Greek cards
+    [ ] Store flashcards in Material table (type: FLASHCARD)
+
+[ ] 4.2 Flashcard UI
+    [ ] Create flashcard display component (flip animation)
+    [ ] Build flashcard deck viewer
+    [ ] Add navigation (next/previous card)
+    [ ] Show progress (card X of Y)
+
+[ ] 4.3 Study Mode (Basic)
+    [ ] Implement simple review flow
+    [ ] Track which cards have been viewed
+    [ ] Optional: Mark cards as "mastered"/"need review"
+    [ ] Shuffle deck option
+
+## PHASE 5: UI Polish & Demo Preparation
+# ========================================
+# Goal: Make it presentable and demo-ready
+
+[ ] 5.1 Home Page
+    [ ] Create landing page explaining the three features
+    [ ] Add navigation to upload/chat/materials
+    [ ] Show recently uploaded PDFs
+    [ ] Quick start guide or tutorial
+
+[ ] 5.2 Material Library
+    [ ] List all uploaded PDFs
+    [ ] Show generated materials per PDF
+    [ ] Add search/filter by PDF name
+    [ ] Delete PDFs and associated materials
+
+[ ] 5.3 UI Improvements
+    [ ] Consistent styling with DaisyUI components
+    [ ] Add loading states everywhere
+    [ ] Error messages that are user-friendly
+    [ ] Responsive design (mobile-friendly)
+
+[ ] 5.4 Demo Data
+    [ ] Prepare 2-3 sample Greek PDFs for demo
+    [ ] Pre-generate some materials for instant demo
+    [ ] Create seed script (optional)
+
+## PHASE 6: Testing & Documentation
+# ==================================
+# Goal: Ensure everything works smoothly
+
+[ ] 6.1 Manual Testing
+    [ ] Test full PDF upload flow
+    [ ] Test RAG chatbot with various questions
+    [ ] Generate and verify worksheets
+    [ ] Generate and review flashcards
+    [ ] Test error cases (bad PDFs, no API key, etc.)
+
+[ ] 6.2 Documentation
+    [ ] Update README with setup instructions
+    [ ] Add screenshots to README
+    [ ] Document known limitations
+    [ ] Create simple user guide
+
+## FUTURE ENHANCEMENTS (Post-MVP)
+# ================================
+# Ideas for later iterations
+
+[ ] Enhanced RAG
+    [ ] Implement vector embeddings (ChromaDB or similar)
+    [ ] Semantic search instead of keyword matching
+    [ ] Multi-PDF support in single chat session
+    [ ] Citation of specific PDF pages
+
+[ ] More Material Types
+    [ ] Quizzes with auto-grading
+    [ ] Writing prompts
+    [ ] Grammar exercises
+    [ ] Listening comprehension (if PDFs have audio links)
+
+[ ] Greek-Specific Features
+    [ ] Accent mark practice generator
+    [ ] Verb conjugation drills
+    [ ] Grammar rule explanations
+    [ ] Vocabulary frequency analysis
+
+[ ] Export & Sharing
+    [ ] Export to PDF (worksheets/flashcards)
+    [ ] Export to Anki (flashcards)
+    [ ] Share links (read-only)
+    [ ] Classroom integration
+
+[ ] Advanced Features
+    [ ] User accounts (save progress)
+    [ ] Multiple users/classrooms
+    [ ] Analytics (which materials are used most)
+    [ ] Custom templates for worksheets/flashcards
+
+[ ] Content Enhancement
+    [ ] Support for DOCX, TXT files
+    [ ] OCR for scanned PDFs
+    [ ] Image extraction and description
+    [ ] Table parsing
+
+## NOTES & DECISIONS
+# ===================
+
+* KEEP IT SIMPLE: This is an MVP demo, not a production app
+* Local-only: No cloud services (Vercel, etc.) for this version
+* SQLite: Easier to share/demo than Postgres
+* No auth: Single user mode for demo purposes
+* Gemini only: Don't over-engineer with multiple AI providers
+* Focus on Greek education: Tailor examples and features to Greek language learning
+
+## CURRENT PRIORITIES
+# ====================
+1. Get basic PDF upload/processing working
+2. Implement simple RAG chatbot (most impressive feature)
+3. Add worksheet generator (practical value)
+4. Build flashcard system (useful for students)
+5. Polish UI for demo presentation
+
+---
+Last Updated: 2025-10-19
