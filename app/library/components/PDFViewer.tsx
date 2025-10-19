@@ -27,7 +27,7 @@ export default function PDFViewer({ pdfId }: Props) {
   return (
     <div className="h-full flex flex-col bg-gray-100">
       {/* Controls */}
-      <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between">
+      <div className="bg-gray-800 border-b border-gray-700 p-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPageNumber((prev) => Math.max(1, prev - 1))}
@@ -49,7 +49,7 @@ export default function PDFViewer({ pdfId }: Props) {
             </svg>
           </button>
 
-          <span className="text-sm px-3">
+          <span className="text-sm px-3 text-gray-300">
             Page {pageNumber} of {numPages || '?'}
           </span>
 
@@ -95,7 +95,7 @@ export default function PDFViewer({ pdfId }: Props) {
             </svg>
           </button>
 
-          <span className="text-sm px-2">{Math.round(scale * 100)}%</span>
+          <span className="text-sm px-2 text-gray-300">{Math.round(scale * 100)}%</span>
 
           <button
             onClick={() => setScale((prev) => Math.min(2.0, prev + 0.1))}
@@ -128,19 +128,19 @@ export default function PDFViewer({ pdfId }: Props) {
       </div>
 
       {/* PDF Display */}
-      <div className="flex-1 overflow-auto p-4 flex justify-center bg-gray-50">
+      <div className="flex-1 overflow-auto p-4 flex justify-center bg-gray-900">
         <Document
           file={pdfUrl}
           onLoadSuccess={onDocumentLoadSuccess}
           loading={
             <div className="flex items-center justify-center h-full">
-              <span className="loading loading-spinner loading-lg text-greek-blue"></span>
+              <span className="loading loading-spinner loading-lg text-blue-500"></span>
             </div>
           }
           error={
             <div className="text-center text-error p-8">
               <div className="text-4xl mb-2">⚠️</div>
-              <p>Failed to load PDF</p>
+              <p className="text-gray-300">Failed to load PDF</p>
             </div>
           }
         >

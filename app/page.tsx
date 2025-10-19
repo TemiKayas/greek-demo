@@ -27,21 +27,21 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-greek-blue via-aegean to-greek-blue-light">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Greek pattern overlay */}
       <div className="greek-pattern absolute inset-0 pointer-events-none" />
 
       {/* Header */}
-      <header className="relative z-10 bg-white/95 backdrop-blur-sm border-b-4 border-greek-blue shadow-lg">
+      <header className="relative z-10 bg-gray-800/95 backdrop-blur-sm border-b-2 border-blue-500/50 shadow-lg">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="text-4xl">🏛️</div>
               <div>
-                <h1 className="text-3xl font-bold text-greek-blue">
+                <h1 className="text-3xl font-bold text-blue-400">
                   Μοντέρνα Ελληνικά
                 </h1>
-                <p className="text-sm text-gray-600">Modern Greek Education Tools</p>
+                <p className="text-sm text-gray-300">Modern Greek Education Tools</p>
               </div>
             </div>
             <Link href="/library" className="btn btn-primary gap-2">
@@ -68,29 +68,29 @@ export default function Home() {
       <main className="relative z-10 container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-12 text-white">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in text-white">
               AI-Powered Learning Tools
             </h2>
-            <p className="text-xl md:text-2xl text-white/90 mb-2">
+            <p className="text-xl md:text-2xl text-gray-200 mb-2">
               Transform your Greek language PDFs into interactive materials
             </p>
-            <p className="text-lg text-white/80">
+            <p className="text-lg text-blue-400">
               Upload • Chat • Generate Worksheets & Flashcards
             </p>
           </div>
 
           {/* Upload Card */}
-          <div className="bg-white rounded-lg shadow-2xl p-8 mb-8 animate-slide-up border-t-4 border-ancient-gold">
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-8 mb-8 animate-slide-up border-t-4 border-blue-500">
             <div className="flex items-center gap-3 mb-6">
               <div className="text-3xl">📄</div>
-              <h3 className="text-2xl font-bold text-greek-blue">Upload Your Material</h3>
+              <h3 className="text-2xl font-bold text-blue-400">Upload Your Material</h3>
             </div>
 
             <form action={handleUpload} className="space-y-6">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-lg font-medium">Choose a PDF file</span>
+                  <span className="label-text text-lg font-medium text-white">Choose a PDF file</span>
                 </label>
                 <input
                   type="file"
@@ -101,7 +101,7 @@ export default function Home() {
                   className="file-input file-input-bordered file-input-primary w-full"
                 />
                 <label className="label">
-                  <span className="label-text-alt text-gray-500">
+                  <span className="label-text-alt text-gray-400">
                     Maximum file size: 25MB
                   </span>
                 </label>
@@ -174,34 +174,34 @@ export default function Home() {
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-aegean hover:shadow-xl transition-shadow">
+            <div className="bg-gray-800/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
               <div className="text-4xl mb-3">💬</div>
-              <h4 className="text-xl font-bold text-greek-blue mb-2">RAG Chatbot</h4>
-              <p className="text-gray-600">
+              <h4 className="text-xl font-bold text-blue-400 mb-2">RAG Chatbot</h4>
+              <p className="text-gray-300">
                 Ask questions about your uploaded materials and get instant answers
               </p>
             </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-terracotta hover:shadow-xl transition-shadow">
+            <div className="bg-gray-800/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-blue-400 hover:shadow-xl transition-shadow">
               <div className="text-4xl mb-3">📝</div>
-              <h4 className="text-xl font-bold text-greek-blue mb-2">Worksheets</h4>
-              <p className="text-gray-600">
+              <h4 className="text-xl font-bold text-blue-400 mb-2">Worksheets</h4>
+              <p className="text-gray-300">
                 Auto-generate practice exercises and comprehension questions
               </p>
             </div>
 
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-ancient-gold hover:shadow-xl transition-shadow">
+            <div className="bg-gray-800/95 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-blue-300 hover:shadow-xl transition-shadow">
               <div className="text-4xl mb-3">🗂️</div>
-              <h4 className="text-xl font-bold text-greek-blue mb-2">Flashcards</h4>
-              <p className="text-gray-600">
+              <h4 className="text-xl font-bold text-blue-400 mb-2">Flashcards</h4>
+              <p className="text-gray-300">
                 Create vocabulary cards automatically from your PDF content
               </p>
             </div>
           </div>
 
           {/* Info Box */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-olive">
-            <h4 className="font-bold text-greek-blue mb-2 flex items-center gap-2">
+          <div className="bg-gray-800/90 backdrop-blur-sm rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
+            <h4 className="font-bold text-blue-400 mb-2 flex items-center gap-2">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -217,7 +217,7 @@ export default function Home() {
               </svg>
               Getting Started
             </h4>
-            <ol className="list-decimal list-inside text-gray-700 space-y-1">
+            <ol className="list-decimal list-inside text-gray-300 space-y-1">
               <li>Upload a Greek language PDF (textbook, article, lesson notes)</li>
               <li>Wait for text extraction and processing</li>
               <li>Use the tools to generate study materials or chat with your content</li>
@@ -227,7 +227,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 mt-12 py-6 bg-greek-blue-dark text-white text-center">
+      <footer className="relative z-10 mt-12 py-6 bg-gray-900 border-t border-gray-800 text-gray-400 text-center">
         <p className="text-sm">
           Built with Next.js, Prisma, and Google Gemini • Modern Greek Education Demo
         </p>

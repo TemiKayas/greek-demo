@@ -2,8 +2,8 @@
 @plugin "daisyui";
 
 :root {
-  --background: #ffffff;
-  --foreground: #1a202c;
+  --background: #1a1a1a;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -19,13 +19,13 @@ body {
   font-family: var(--font-quicksand), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-/* Greek-themed decorative elements */
+/* Dark theme pattern overlay */
 .greek-pattern {
   background-image:
-    linear-gradient(45deg, #0D5EAF 12.5%, transparent 12.5%, transparent 50%, #0D5EAF 50%, #0D5EAF 62.5%, transparent 62.5%, transparent 100%),
-    linear-gradient(135deg, transparent 0%, transparent 37.5%, #1E88E5 37.5%, #1E88E5 50%, transparent 50%, transparent 87.5%, #1E88E5 87.5%, #1E88E5 100%);
+    linear-gradient(45deg, #3B82F6 12.5%, transparent 12.5%, transparent 50%, #3B82F6 50%, #3B82F6 62.5%, transparent 62.5%, transparent 100%),
+    linear-gradient(135deg, transparent 0%, transparent 37.5%, #60A5FA 37.5%, #60A5FA 50%, transparent 50%, transparent 87.5%, #60A5FA 87.5%, #60A5FA 100%);
   background-size: 20px 20px;
-  opacity: 0.05;
+  opacity: 0.03;
 }
 
 /* custom animations */

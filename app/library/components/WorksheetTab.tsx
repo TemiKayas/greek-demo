@@ -27,21 +27,21 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
   }
 
   return (
-    <div className="h-full flex flex-col p-6">
+    <div className="h-full flex flex-col p-6 bg-gray-900">
       {!worksheet ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-lg">
             <div className="text-6xl mb-6">📝</div>
-            <h3 className="text-2xl font-bold text-greek-blue mb-3">Worksheet Generator</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-2xl font-bold text-blue-400 mb-3">Worksheet Generator</h3>
+            <p className="text-gray-300 mb-6">
               Generate practice exercises and comprehension questions based on your PDF content.
               Perfect for classroom use or self-study.
             </p>
 
             <div className="space-y-4 mb-8">
-              <div className="bg-gray-50 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-gray-700 mb-2">Features:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-left">
+                <h4 className="font-medium text-gray-300 mb-2">Features:</h4>
+                <ul className="text-sm text-gray-400 space-y-1">
                   <li>✓ Multiple choice questions</li>
                   <li>✓ Fill-in-the-blank exercises</li>
                   <li>✓ Comprehension questions</li>
@@ -89,10 +89,10 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <div className="bg-white rounded-lg border border-gray-200 p-8 max-w-3xl mx-auto">
+        <div className="flex-1 overflow-y-auto bg-gray-900">
+          <div className="bg-gray-800 rounded-lg border border-gray-700 p-8 max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold">{worksheet.title}</h3>
+              <h3 className="text-2xl font-bold text-white">{worksheet.title}</h3>
               <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
                 <svg
                   className="w-4 h-4"
@@ -113,15 +113,15 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
 
             <div className="space-y-6">
               {worksheet.questions.map((q: any, idx: number) => (
-                <div key={idx} className="border-l-4 border-greek-blue pl-4">
-                  <span className="text-xs font-medium text-gray-500 uppercase">{q.type}</span>
-                  <p className="text-lg mt-1">{q.question}</p>
+                <div key={idx} className="border-l-4 border-blue-500 pl-4">
+                  <span className="text-xs font-medium text-gray-400 uppercase">{q.type}</span>
+                  <p className="text-lg mt-1 text-gray-200">{q.question}</p>
                 </div>
               ))}
             </div>
 
             <div className="mt-8 flex gap-3">
-              <button onClick={() => setWorksheet(null)} className="btn btn-outline">
+              <button onClick={() => setWorksheet(null)} className="btn btn-outline text-gray-300 hover:text-white hover:border-blue-500">
                 Generate New
               </button>
             </div>

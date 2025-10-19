@@ -21,8 +21,8 @@ export async function GET(
     // Read the file from local filesystem
     const fileBuffer = await readFile(pdf.filePath);
 
-    // Return the PDF file
-    return new NextResponse(fileBuffer, {
+    // Return the PDF file (convert Buffer to Uint8Array for proper typing)
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="${pdf.filename}"`,

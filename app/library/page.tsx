@@ -72,16 +72,16 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-greek-blue/10 via-white to-aegean/10">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
-      <header className="bg-white border-b-4 border-greek-blue shadow-lg">
+      <header className="bg-gray-800 border-b-2 border-blue-500/50 shadow-lg">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="text-3xl">📚</div>
               <div>
-                <h1 className="text-2xl font-bold text-greek-blue">Library</h1>
-                <p className="text-sm text-gray-600">Manage your Greek learning materials</p>
+                <h1 className="text-2xl font-bold text-blue-400">Library</h1>
+                <p className="text-sm text-gray-300">Manage your Greek learning materials</p>
               </div>
             </div>
             <Link href="/" className="btn btn-outline btn-primary">
@@ -117,18 +117,18 @@ export default function LibraryPage() {
           />
 
           {/* Right Panel - Preview & Tools */}
-          <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden flex flex-col">
+          <div className="flex-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700">
             {selectedPdf ? (
               <>
                 {/* Tabs */}
-                <div className="border-b border-gray-200">
+                <div className="border-b border-gray-700">
                   <div className="flex">
                     <button
                       onClick={() => setActiveTab('pdf')}
                       className={`px-6 py-3 font-medium border-b-2 transition-colors ${
                         activeTab === 'pdf'
-                          ? 'border-greek-blue text-greek-blue'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-gray-200'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -140,8 +140,8 @@ export default function LibraryPage() {
                       onClick={() => setActiveTab('chat')}
                       className={`px-6 py-3 font-medium border-b-2 transition-colors ${
                         activeTab === 'chat'
-                          ? 'border-greek-blue text-greek-blue'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-gray-200'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -153,8 +153,8 @@ export default function LibraryPage() {
                       onClick={() => setActiveTab('worksheet')}
                       className={`px-6 py-3 font-medium border-b-2 transition-colors ${
                         activeTab === 'worksheet'
-                          ? 'border-greek-blue text-greek-blue'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-gray-200'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -166,8 +166,8 @@ export default function LibraryPage() {
                       onClick={() => setActiveTab('flashcard')}
                       className={`px-6 py-3 font-medium border-b-2 transition-colors ${
                         activeTab === 'flashcard'
-                          ? 'border-greek-blue text-greek-blue'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-gray-200'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -202,10 +202,10 @@ export default function LibraryPage() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="flex-1 flex items-center justify-center text-gray-500">
                 <div className="text-center">
                   <div className="text-6xl mb-4">📚</div>
-                  <p className="text-xl">
+                  <p className="text-xl text-gray-400">
                     {isLoading ? 'Loading PDFs...' : 'No PDFs available. Upload one to get started!'}
                   </p>
                 </div>

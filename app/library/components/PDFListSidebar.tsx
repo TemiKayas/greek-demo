@@ -3,6 +3,10 @@ type PDF = {
   filename: string;
   fileSize: number;
   uploadedAt: Date;
+  filePath: string;
+  processedContent: {
+    extractedText: string;
+  } | null;
 };
 
 type Props = {
@@ -36,9 +40,9 @@ export default function PDFListSidebar({
 
   if (isLoading) {
     return (
-      <div className="w-80 bg-white rounded-lg shadow-lg p-4">
+      <div className="w-80 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
         <div className="flex items-center justify-center h-full">
-          <span className="loading loading-spinner loading-lg text-greek-blue"></span>
+          <span className="loading loading-spinner loading-lg text-blue-500"></span>
         </div>
       </div>
     );
@@ -46,9 +50,9 @@ export default function PDFListSidebar({
 
   if (pdfs.length === 0) {
     return (
-      <div className="w-80 bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-lg font-bold text-greek-blue mb-4">Your PDFs</h2>
-        <div className="text-center text-gray-400 py-8">
+      <div className="w-80 bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+        <h2 className="text-lg font-bold text-blue-400 mb-4">Your PDFs</h2>
+        <div className="text-center text-gray-500 py-8">
           <div className="text-4xl mb-2">📄</div>
           <p className="text-sm">No PDFs uploaded yet</p>
         </div>
@@ -57,8 +61,8 @@ export default function PDFListSidebar({
   }
 
   return (
-    <div className="w-80 bg-white rounded-lg shadow-lg overflow-hidden flex flex-col">
-      <div className="p-4 border-b border-gray-200 bg-greek-blue text-white">
+    <div className="w-80 bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700">
+      <div className="p-4 border-b border-gray-700 bg-blue-600 text-white">
         <h2 className="text-lg font-bold">Your PDFs ({pdfs.length})</h2>
       </div>
 
@@ -66,20 +70,20 @@ export default function PDFListSidebar({
         {pdfs.map((pdf) => (
           <div
             key={pdf.id}
-            className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedPdf?.id === pdf.id ? 'bg-blue-50 border-l-4 border-l-greek-blue' : ''
+            className={`p-4 border-b border-gray-700 cursor-pointer transition-colors hover:bg-gray-700/50 ${
+              selectedPdf?.id === pdf.id ? 'bg-blue-900/30 border-l-4 border-l-blue-500' : ''
             }`}
             onClick={() => onSelectPdf(pdf)}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <h3
-                  className="font-medium text-gray-800 truncate mb-1"
+                  className="font-medium text-gray-200 truncate mb-1"
                   title={pdf.filename}
                 >
                   {pdf.filename}
                 </h3>
-                <div className="flex items-center gap-3 text-xs text-gray-500">
+                <div className="flex items-center gap-3 text-xs text-gray-400">
                   <span>{formatFileSize(pdf.fileSize)}</span>
                   <span>•</span>
                   <span>{formatDate(pdf.uploadedAt)}</span>
@@ -91,7 +95,7 @@ export default function PDFListSidebar({
                   e.stopPropagation();
                   onDeletePdf(pdf.id);
                 }}
-                className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                className="btn btn-ghost btn-xs text-error hover:bg-error/20"
                 title="Delete PDF"
               >
                 <svg

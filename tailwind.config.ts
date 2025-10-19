@@ -52,25 +52,25 @@ const config = {
     themes: [
       {
         greek: {
-          primary: '#0D5EAF',           // Greek blue
+          primary: '#3B82F6',           // Bright blue for accents
           'primary-content': '#ffffff',
-          secondary: '#1E88E5',         // Aegean blue
+          secondary: '#60A5FA',         // Lighter blue
           'secondary-content': '#ffffff',
-          accent: '#D4AF37',            // Ancient gold
+          accent: '#2563EB',            // Deep blue accent
           'accent-content': '#ffffff',
-          neutral: '#2c3e50',           // Dark slate
+          neutral: '#2d3748',           // Dark gray
           'neutral-content': '#ffffff',
-          'base-100': '#ffffff',        // White (Greek flag)
-          'base-200': '#F8F9FA',        // Marble white
-          'base-300': '#e8eaed',        // Light grey
-          'base-content': '#1a202c',    // Dark text
-          info: '#1E88E5',
+          'base-100': '#1a1a1a',        // Soft dark gray
+          'base-200': '#242424',        // Slightly lighter dark
+          'base-300': '#2d2d2d',        // Medium dark gray
+          'base-content': '#ffffff',    // White text
+          info: '#3B82F6',
           'info-content': '#ffffff',
-          success: '#6B8E23',           // Olive
+          success: '#10B981',           // Green
           'success-content': '#ffffff',
-          warning: '#D4764E',           // Terracotta
+          warning: '#F59E0B',           // Orange
           'warning-content': '#ffffff',
-          error: '#dc2626',
+          error: '#EF4444',
           'error-content': '#ffffff',
           '--rounded-btn': '0.5rem',
           '--rounded-box': '0.75rem',

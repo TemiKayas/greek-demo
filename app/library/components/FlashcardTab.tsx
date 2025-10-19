@@ -44,21 +44,21 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
   }
 
   return (
-    <div className="h-full flex flex-col p-6">
+    <div className="h-full flex flex-col p-6 bg-gray-900">
       {flashcards.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-lg">
             <div className="text-6xl mb-6">🗂️</div>
-            <h3 className="text-2xl font-bold text-greek-blue mb-3">Flashcard Builder</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-2xl font-bold text-blue-400 mb-3">Flashcard Builder</h3>
+            <p className="text-gray-300 mb-6">
               Automatically extract key vocabulary and concepts from your PDF to create study
               flashcards. Perfect for memorizing Greek vocabulary!
             </p>
 
             <div className="space-y-4 mb-8">
-              <div className="bg-gray-50 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-gray-700 mb-2">Features:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-left">
+                <h4 className="font-medium text-gray-300 mb-2">Features:</h4>
+                <ul className="text-sm text-gray-400 space-y-1">
                   <li>✓ Greek-English vocabulary cards</li>
                   <li>✓ Key terms and definitions</li>
                   <li>✓ Interactive review mode</li>
@@ -106,10 +106,10 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-gray-900">
           {/* Progress */}
           <div className="mb-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-300">
               Card {currentCard + 1} of {flashcards.length}
             </p>
             <progress
@@ -138,24 +138,24 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                 >
                   {/* Front */}
                   <div
-                    className="absolute w-full h-full bg-white rounded-2xl shadow-2xl border-4 border-greek-blue flex items-center justify-center p-8"
+                    className="absolute w-full h-full bg-gray-800 rounded-2xl shadow-2xl border-4 border-blue-500 flex items-center justify-center p-8"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                     }}
                   >
                     <div className="text-center">
-                      <p className="text-sm text-gray-500 mb-4">Greek Term</p>
-                      <p className="text-4xl font-bold text-greek-blue">
+                      <p className="text-sm text-gray-400 mb-4">Greek Term</p>
+                      <p className="text-4xl font-bold text-blue-400">
                         {flashcards[currentCard].front}
                       </p>
-                      <p className="text-sm text-gray-400 mt-8">Click to flip</p>
+                      <p className="text-sm text-gray-500 mt-8">Click to flip</p>
                     </div>
                   </div>
 
                   {/* Back */}
                   <div
-                    className="absolute w-full h-full bg-ancient-gold rounded-2xl shadow-2xl border-4 border-greek-blue flex items-center justify-center p-8"
+                    className="absolute w-full h-full bg-blue-600 rounded-2xl shadow-2xl border-4 border-blue-400 flex items-center justify-center p-8"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
@@ -177,7 +177,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
           {/* Controls */}
           <div className="flex items-center justify-center gap-4 mt-8">
-            <button onClick={prevCard} className="btn btn-outline btn-circle">
+            <button onClick={prevCard} className="btn btn-outline btn-circle text-gray-300 hover:text-white hover:border-blue-500">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -197,7 +197,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
               {isFlipped ? 'Show Front' : 'Show Back'}
             </button>
 
-            <button onClick={nextCard} className="btn btn-outline btn-circle">
+            <button onClick={nextCard} className="btn btn-outline btn-circle text-gray-300 hover:text-white hover:border-blue-500">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -221,7 +221,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                 setCurrentCard(0);
                 setIsFlipped(false);
               }}
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm text-gray-300 hover:text-white hover:border-blue-500"
             >
               Generate New Set
             </button>
