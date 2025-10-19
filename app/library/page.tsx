@@ -1,13 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { getAllPDFs, deletePDF } from '@/app/actions/pdf';
 import PDFListSidebar from './components/PDFListSidebar';
-import PDFViewer from './components/PDFViewer';
 import ChatbotTab from './components/ChatbotTab';
 import WorksheetTab from './components/WorksheetTab';
 import FlashcardTab from './components/FlashcardTab';
 import Link from 'next/link';
+
+// Dynamically import PDFViewer to avoid SSR issues with react-pdf
+const PDFViewer = dynamic(() => import('./components/PDFViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <span className="loading loading-spinner loading-lg text-greek-blue"></span>
+    </div>
+  ),
+});
 
 type PDF = {
   id: string;
