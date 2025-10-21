@@ -11,6 +11,30 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-quicksand);
   --font-mono: var(--font-geist-mono);
+
+  /* DaisyUI Greek Dark Theme */
+  --color-primary: #3B82F6;
+  --color-primary-content: #ffffff;
+  --color-secondary: #60A5FA;
+  --color-secondary-content: #ffffff;
+  --color-accent: #2563EB;
+  --color-accent-content: #ffffff;
+  --color-neutral: #2d3748;
+  --color-neutral-content: #ffffff;
+  --color-base-100: #1a1a1a;
+  --color-base-200: #242424;
+  --color-base-300: #2d2d2d;
+  --color-base-content: #ffffff;
+  --color-info: #3B82F6;
+  --color-info-content: #ffffff;
+  --color-success: #10B981;
+  --color-success-content: #ffffff;
+  --color-warning: #F59E0B;
+  --color-warning-content: #ffffff;
+  --color-error: #EF4444;
+  --color-error-content: #ffffff;
+  --rounded-btn: 0.5rem;
+  --rounded-box: 0.75rem;
 }
 
 body {

@@ -78,18 +78,22 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
   return (
     <div className="h-full flex flex-col">
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-900">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4 bg-base-100">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <div className="text-5xl mb-4">💬</div>
-            <h3 className="text-xl font-bold mb-2 text-blue-400">RAG Chatbot</h3>
-            <p className="text-sm max-w-md mx-auto mb-6 text-gray-400">
+          <div className="text-center py-8 sm:py-12 px-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 sm:w-12 sm:h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold mb-2 text-base-content">RAG Chatbot</h3>
+            <p className="text-sm sm:text-base max-w-md mx-auto mb-6 text-base-content/60">
               Ask questions about the content in your PDF. The AI will search through the document
               and provide relevant answers based on the material.
             </p>
-            <div className="mt-6 text-left max-w-md mx-auto bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <p className="text-sm font-medium text-gray-300 mb-2">Example questions:</p>
-              <ul className="text-sm text-gray-400 space-y-1">
+            <div className="mt-6 text-left max-w-md mx-auto card bg-base-200 border border-base-content/10 p-4">
+              <p className="text-sm font-medium mb-2 text-primary">Example questions:</p>
+              <ul className="text-sm text-base-content/70 space-y-1">
                 <li>• What is the main topic of this document?</li>
                 <li>• Explain the grammar rule mentioned in this text</li>
                 <li>• What Greek vocabulary words are introduced?</li>
@@ -106,41 +110,41 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                  className={`max-w-[85%] sm:max-w-[80%] rounded-lg px-3 sm:px-4 py-2 sm:py-3 ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-100 border border-gray-700'
+                      ? 'bg-primary text-primary-content'
+                      : 'bg-base-200 text-base-content'
                   }`}
                 >
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:my-2">
+                    <div className="prose prose-sm max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          p: ({ children }) => <p className="text-gray-100 mb-2 last:mb-0">{children}</p>,
-                          strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
-                          em: ({ children }) => <em className="text-blue-300">{children}</em>,
-                          ul: ({ children }) => <ul className="list-disc pl-5 text-gray-200 space-y-1">{children}</ul>,
-                          ol: ({ children }) => <ol className="list-decimal pl-5 text-gray-200 space-y-1">{children}</ol>,
-                          li: ({ children }) => <li className="text-gray-200">{children}</li>,
-                          code: ({ children }) => <code className="bg-gray-700 px-1.5 py-0.5 rounded text-blue-300">{children}</code>,
+                          p: ({ children }) => <p className="mb-2 last:mb-0 text-sm sm:text-base">{children}</p>,
+                          strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                          em: ({ children }) => <em className="text-primary">{children}</em>,
+                          ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 text-sm sm:text-base">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 text-sm sm:text-base">{children}</ol>,
+                          li: ({ children }) => <li className="text-sm sm:text-base">{children}</li>,
+                          code: ({ children }) => <code className="bg-base-300 px-1.5 py-0.5 rounded text-xs sm:text-sm text-primary">{children}</code>,
                         }}
                       >
                         {msg.content}
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                    <div className="whitespace-pre-wrap break-words text-sm sm:text-base">{msg.content}</div>
                   )}
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3">
+                <div className="bg-base-200 rounded-lg px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="loading loading-dots loading-sm text-blue-400"></span>
-                    <span className="text-sm text-gray-400">Thinking...</span>
+                    <span className="loading loading-dots loading-sm text-primary"></span>
+                    <span className="text-sm text-base-content/70">Thinking...</span>
                   </div>
                 </div>
               </div>
@@ -151,12 +155,12 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-700 p-4 bg-gray-800">
+      <div className="border-t border-base-300 p-3 sm:p-4 bg-base-200">
         {!extractedText ? (
-          <div className="alert alert-warning">
+          <div className="alert alert-warning text-sm sm:text-base">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-6 w-6"
+              className="stroke-current shrink-0 h-5 w-5 sm:h-6 sm:w-6"
               fill="none"
               viewBox="0 0 24 24"
             >
@@ -178,19 +182,19 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Ask a question about your PDF..."
-                className="input input-bordered flex-1 bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+                className="input input-bordered flex-1 text-sm sm:text-base bg-base-100 text-base-content placeholder:text-base-content/50"
                 disabled={isLoading}
               />
               <button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim()}
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm sm:btn-md"
               >
                 {isLoading ? (
                   <span className="loading loading-spinner loading-sm"></span>
                 ) : (
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -205,7 +209,7 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
                 )}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-base-content/60 mt-2">
               Press Enter to send • The AI will reference the PDF content in its answers
             </p>
           </>

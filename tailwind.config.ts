@@ -47,37 +47,7 @@ const config = {
       },
     },
   },
-  plugins: [require('daisyui')],
-  daisyui: {
-    themes: [
-      {
-        greek: {
-          primary: '#3B82F6',           // Bright blue for accents
-          'primary-content': '#ffffff',
-          secondary: '#60A5FA',         // Lighter blue
-          'secondary-content': '#ffffff',
-          accent: '#2563EB',            // Deep blue accent
-          'accent-content': '#ffffff',
-          neutral: '#2d3748',           // Dark gray
-          'neutral-content': '#ffffff',
-          'base-100': '#1a1a1a',        // Soft dark gray
-          'base-200': '#242424',        // Slightly lighter dark
-          'base-300': '#2d2d2d',        // Medium dark gray
-          'base-content': '#ffffff',    // White text
-          info: '#3B82F6',
-          'info-content': '#ffffff',
-          success: '#10B981',           // Green
-          'success-content': '#ffffff',
-          warning: '#F59E0B',           // Orange
-          'warning-content': '#ffffff',
-          error: '#EF4444',
-          'error-content': '#ffffff',
-          '--rounded-btn': '0.5rem',
-          '--rounded-box': '0.75rem',
-        },
-      },
-    ],
-  },
-} satisfies Config & { daisyui?: unknown };
+  plugins: [],
+} satisfies Config;
 
 export default config;

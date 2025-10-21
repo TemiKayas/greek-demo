@@ -39,6 +39,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
   // Auto-generate flashcards when tab is first opened
   useEffect(() => {
     loadPastFlashcards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfId]);
 
   async function loadPastFlashcards() {
@@ -125,37 +126,41 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
   const categories = getCategories();
 
   return (
-    <div className="h-full flex flex-col p-6 bg-gray-900">
+    <div className="h-full flex flex-col p-4 sm:p-6 bg-base-100">
       {!flashcardSet ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-lg">
-            <div className="text-6xl mb-6">🗂️</div>
-            <h3 className="text-2xl font-bold text-blue-400 mb-3">Flashcard Builder</h3>
-            <p className="text-gray-300 mb-6">
+          <div className="text-center max-w-lg px-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <svg className="w-10 h-10 sm:w-12 sm:h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-base-content mb-3">Flashcard Builder</h3>
+            <p className="text-sm sm:text-base text-base-content/60 mb-4 sm:mb-6">
               Automatically extract key concepts, vocabulary, and grammar rules from your PDF to create study
               flashcards. Perfect for memorizing Greek vocabulary and understanding grammar!
             </p>
 
-            <div className="space-y-4 mb-8">
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-gray-300 mb-2">Flashcard Content:</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>📚 Greek-English vocabulary with examples</li>
-                  <li>📖 Grammar rules and conjugations</li>
-                  <li>🏛️ Cultural facts and traditions</li>
-                  <li>💬 Practical expressions and usage</li>
-                  <li>💡 Key concepts and explanations</li>
+            <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+              <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4 text-left">
+                <h4 className="font-medium text-sm sm:text-base mb-2 text-primary">Flashcard Content:</h4>
+                <ul className="text-xs sm:text-sm text-base-content/70 space-y-1">
+                  <li>• Greek-English vocabulary with examples</li>
+                  <li>• Grammar rules and conjugations</li>
+                  <li>• Cultural facts and traditions</li>
+                  <li>• Practical expressions and usage</li>
+                  <li>• Key concepts and explanations</li>
                 </ul>
               </div>
 
               {/* Past flashcard sets dropdown */}
               {savedSets.length > 0 && (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4">
+                  <label className="block text-xs sm:text-sm font-medium mb-2 text-primary">
                     Load Previous Flashcard Set:
                   </label>
                   <select
-                    className="select select-bordered w-full bg-gray-700 border-gray-600 text-white"
+                    className="select select-bordered w-full text-sm sm:text-base"
                     onChange={(e) => {
                       const selected = savedSets.find(s => s.id === e.target.value);
                       if (selected) loadFlashcardSet(selected);
@@ -176,17 +181,17 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !extractedText}
-              className="btn btn-primary btn-lg"
+              className="btn btn-primary btn-md sm:btn-lg"
             >
               {isGenerating ? (
                 <>
-                  <span className="loading loading-spinner"></span>
+                  <span className="loading loading-spinner loading-sm"></span>
                   Generating Flashcards...
                 </>
               ) : (
                 <>
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -204,35 +209,36 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
             </button>
 
             {!extractedText && (
-              <p className="text-sm text-error mt-4">
+              <p className="text-xs sm:text-sm text-error mt-4">
                 No text extracted from this PDF. Please upload a text-based PDF.
               </p>
             )}
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col bg-gray-900">
+        <div className="flex-1 flex flex-col bg-base-100">
           {/* Header with title and actions */}
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-white">{flashcardSet.title}</h3>
-            <div className="flex gap-2">
+          <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <h3 className="text-lg sm:text-2xl font-bold text-base-content truncate">{flashcardSet.title}</h3>
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="btn btn-sm btn-outline text-gray-300 hover:text-white hover:border-blue-500"
+                className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
               >
                 {isGenerating ? (
                   <span className="loading loading-spinner loading-xs"></span>
                 ) : (
-                  'Generate New Set'
+                  <span className="hidden sm:inline">Generate New Set</span>
                 )}
+                <span className="sm:hidden">New</span>
               </button>
               <button
                 onClick={() => {
                   setFlashcardSet(null);
                   setCurrentSetId(null);
                 }}
-                className="btn btn-sm btn-ghost text-gray-400"
+                className="btn btn-xs sm:btn-sm btn-ghost"
               >
                 Close
               </button>
@@ -241,7 +247,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
           {/* Category filter */}
           {categories.length > 1 && (
-            <div className="mb-4">
+            <div className="mb-3 sm:mb-4">
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => {
@@ -249,7 +255,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                     setCurrentCard(0);
                     setIsFlipped(false);
                   }}
-                  className={`btn btn-sm ${filterCategory === 'all' ? 'btn-primary' : 'btn-outline text-gray-300'}`}
+                  className={`btn btn-xs sm:btn-sm ${filterCategory === 'all' ? 'btn-primary' : 'btn-outline'}`}
                 >
                   All ({flashcardSet.cards.length})
                 </button>
@@ -261,9 +267,11 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                       setCurrentCard(0);
                       setIsFlipped(false);
                     }}
-                    className={`btn btn-sm ${filterCategory === cat ? 'btn-primary' : 'btn-outline text-gray-300'}`}
+                    className={`btn btn-xs sm:btn-sm ${filterCategory === cat ? 'btn-primary' : 'btn-outline'}`}
                   >
-                    {cat} ({flashcardSet.cards.filter(c => c.category === cat).length})
+                    <span className="hidden sm:inline">{cat}</span>
+                    <span className="sm:hidden">{cat.substring(0, 4)}</span>
+                    ({flashcardSet.cards.filter(c => c.category === cat).length})
                   </button>
                 ))}
               </div>
@@ -271,20 +279,20 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
           )}
 
           {/* Progress */}
-          <div className="mb-6 text-center">
-            <p className="text-sm text-gray-300">
+          <div className="mb-4 sm:mb-6 text-center">
+            <p className="text-xs sm:text-sm text-base-content/70">
               Card {currentCard + 1} of {filteredCards.length}
               {filterCategory !== 'all' && ` (${filterCategory})`}
             </p>
             <progress
-              className="progress progress-primary w-64 mt-2"
+              className="progress progress-primary w-full max-w-xs sm:max-w-md mt-2"
               value={currentCard + 1}
               max={filteredCards.length}
             ></progress>
           </div>
 
           {/* Flashcard */}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center px-4">
             <div className="relative w-full max-w-2xl">
               <div
                 onClick={() => setIsFlipped(!isFlipped)}
@@ -292,7 +300,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                 style={{ perspective: '1000px' }}
               >
                 <div
-                  className={`relative w-full h-96 transition-transform duration-500 transform-style-3d`}
+                  className={`relative w-full h-64 sm:h-80 md:h-96 transition-transform duration-500 transform-style-3d`}
                   style={{
                     transformStyle: 'preserve-3d',
                     transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -300,26 +308,26 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                 >
                   {/* Front */}
                   <div
-                    className="absolute w-full h-full bg-gray-800 rounded-2xl shadow-2xl border-4 border-blue-500 flex items-center justify-center p-8"
+                    className="absolute w-full h-full bg-base-200 rounded-xl sm:rounded-2xl shadow-2xl border-2 sm:border-4 border-primary flex items-center justify-center p-4 sm:p-6 md:p-8"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                     }}
                   >
                     <div className="text-center">
-                      <p className="text-xs text-blue-400 uppercase font-bold mb-4">
+                      <p className="text-xs sm:text-sm text-primary uppercase font-bold mb-2 sm:mb-4">
                         {filteredCards[currentCard].category}
                       </p>
-                      <p className="text-3xl font-bold text-white whitespace-pre-wrap">
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-base-content whitespace-pre-wrap">
                         {filteredCards[currentCard].front}
                       </p>
-                      <p className="text-sm text-gray-500 mt-8">Click to flip</p>
+                      <p className="text-xs sm:text-sm text-base-content/50 mt-4 sm:mt-8">Click to flip</p>
                     </div>
                   </div>
 
                   {/* Back */}
                   <div
-                    className="absolute w-full h-full bg-blue-600 rounded-2xl shadow-2xl border-4 border-blue-400 flex items-center justify-center p-8 overflow-y-auto"
+                    className="absolute w-full h-full bg-primary rounded-xl sm:rounded-2xl shadow-2xl border-2 sm:border-4 border-primary flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
@@ -327,13 +335,13 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                     }}
                   >
                     <div className="text-center">
-                      <p className="text-xs text-white/80 uppercase font-bold mb-4">
+                      <p className="text-xs sm:text-sm text-primary-content/80 uppercase font-bold mb-2 sm:mb-4">
                         {filteredCards[currentCard].category}
                       </p>
-                      <div className="text-lg text-white whitespace-pre-wrap leading-relaxed">
+                      <div className="text-sm sm:text-base md:text-lg text-primary-content whitespace-pre-wrap leading-relaxed">
                         {filteredCards[currentCard].back}
                       </div>
-                      <p className="text-sm text-white/70 mt-8">Click to flip back</p>
+                      <p className="text-xs sm:text-sm text-primary-content/70 mt-4 sm:mt-8">Click to flip back</p>
                     </div>
                   </div>
                 </div>
@@ -342,14 +350,14 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4 mt-8">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 mt-4 sm:mt-8">
             <button
               onClick={prevCard}
-              className="btn btn-outline btn-circle text-gray-300 hover:text-white hover:border-blue-500"
+              className="btn btn-outline btn-circle btn-sm sm:btn-md"
               disabled={filteredCards.length <= 1}
             >
               <svg
-                className="w-6 h-6"
+                className="w-4 h-4 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -365,18 +373,18 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
             <button
               onClick={() => setIsFlipped(!isFlipped)}
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm sm:btn-md"
             >
               {isFlipped ? 'Show Front' : 'Show Back'}
             </button>
 
             <button
               onClick={nextCard}
-              className="btn btn-outline btn-circle text-gray-300 hover:text-white hover:border-blue-500"
+              className="btn btn-outline btn-circle btn-sm sm:btn-md"
               disabled={filteredCards.length <= 1}
             >
               <svg
-                className="w-6 h-6"
+                className="w-4 h-4 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -393,10 +401,10 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
           {/* Delete button */}
           {currentSetId && (
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-4 sm:mt-6">
               <button
                 onClick={() => handleDelete(currentSetId)}
-                className="btn btn-sm btn-error btn-outline"
+                className="btn btn-xs sm:btn-sm btn-error btn-outline"
               >
                 Delete This Flashcard Set
               </button>

@@ -46,10 +46,10 @@ export default function LibraryPage() {
     setIsLoading(true);
     const result = await getAllPDFs();
     if (result.success && result.data) {
-      setPdfs(result.data as any);
+      setPdfs(result.data as PDF[]);
       // Auto-select most recent PDF
       if (result.data.length > 0) {
-        setSelectedPdf(result.data[0] as any);
+        setSelectedPdf(result.data[0] as PDF);
       }
     }
     setIsLoading(false);
@@ -74,19 +74,23 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 border-b-2 border-blue-500/50 shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <header className="bg-base-100 border-b border-base-content/10 shadow-lg sticky top-0 z-50">
+        <div className="container mx-auto px-4 lg:px-8 py-3 lg:py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="text-3xl">📚</div>
-              <div>
-                <h1 className="text-2xl font-bold text-blue-400">Library</h1>
-                <p className="text-sm text-gray-300">Manage your Greek learning materials</p>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="text-center sm:text-left">
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">Library</h1>
+                <p className="text-xs sm:text-sm text-base-content/70">Manage your Greek learning materials</p>
               </div>
             </div>
-            <Link href="/" className="btn btn-outline btn-primary">
+            <Link href="/" className="btn btn-outline btn-primary btn-sm sm:btn-md gap-2">
               <svg
-                className="w-5 h-5"
+                className="w-4 h-4 sm:w-5 sm:h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -98,15 +102,15 @@ export default function LibraryPage() {
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
                 />
               </svg>
-              Home
+              <span className="hidden sm:inline">Home</span>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-6 h-[calc(100vh-180px)]">
+      <div className="container mx-auto px-4 lg:px-8 py-4 lg:py-6">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-180px)]">
           {/* Left Sidebar - PDF List */}
           <PDFListSidebar
             pdfs={pdfs}
@@ -117,69 +121,69 @@ export default function LibraryPage() {
           />
 
           {/* Right Panel - Preview & Tools */}
-          <div className="flex-1 bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700">
+          <div className="flex-1 card bg-base-200 shadow-xl overflow-hidden flex flex-col">
             {selectedPdf ? (
               <>
                 {/* Tabs */}
-                <div className="border-b border-gray-700">
-                  <div className="flex">
+                <div className="bg-base-300 border-b border-base-content/10">
+                  <div className="flex w-full">
                     <button
                       onClick={() => setActiveTab('pdf')}
-                      className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors border-b-2 ${
                         activeTab === 'pdf'
-                          ? 'border-blue-500 text-blue-400'
-                          : 'border-transparent text-gray-400 hover:text-gray-200'
+                          ? 'border-primary text-primary bg-base-200'
+                          : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>📄</span>
-                        <span>PDF</span>
-                      </div>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>PDF</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('chat')}
-                      className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors border-b-2 ${
                         activeTab === 'chat'
-                          ? 'border-blue-500 text-blue-400'
-                          : 'border-transparent text-gray-400 hover:text-gray-200'
+                          ? 'border-primary text-primary bg-base-200'
+                          : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>💬</span>
-                        <span>Chat</span>
-                      </div>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span>CHAT</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('worksheet')}
-                      className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors border-b-2 ${
                         activeTab === 'worksheet'
-                          ? 'border-blue-500 text-blue-400'
-                          : 'border-transparent text-gray-400 hover:text-gray-200'
+                          ? 'border-primary text-primary bg-base-200'
+                          : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>📝</span>
-                        <span>Worksheet</span>
-                      </div>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>WORKSHEET</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('flashcard')}
-                      className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors border-b-2 ${
                         activeTab === 'flashcard'
-                          ? 'border-blue-500 text-blue-400'
-                          : 'border-transparent text-gray-400 hover:text-gray-200'
+                          ? 'border-primary text-primary bg-base-200'
+                          : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>🗂️</span>
-                        <span>Flashcards</span>
-                      </div>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      <span>FLASHCARDS</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Tab Content */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-auto bg-base-100">
                   {activeTab === 'pdf' && <PDFViewer pdfId={selectedPdf.id} />}
                   {activeTab === 'chat' && (
                     <ChatbotTab
@@ -202,10 +206,14 @@ export default function LibraryPage() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-500">
+              <div className="flex-1 flex items-center justify-center p-8">
                 <div className="text-center">
-                  <div className="text-6xl mb-4">📚</div>
-                  <p className="text-xl text-gray-400">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-base-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-10 h-10 sm:w-12 sm:h-12 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <p className="text-lg sm:text-xl text-base-content/60">
                     {isLoading ? 'Loading PDFs...' : 'No PDFs available. Upload one to get started!'}
                   </p>
                 </div>

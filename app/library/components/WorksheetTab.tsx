@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateWorksheet, getWorksheets, deleteWorksheet } from '@/app/actions/worksheet';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type Props = {
   pdfId: string;
@@ -37,10 +38,13 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
   const [showAnswers, setShowAnswers] = useState(false);
   const [savedWorksheets, setSavedWorksheets] = useState<SavedWorksheet[]>([]);
   const [isLoadingPast, setIsLoadingPast] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const worksheetRef = useRef<HTMLDivElement>(null);
 
   // Load past worksheets on mount
   useEffect(() => {
     loadPastWorksheets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfId]);
 
   async function loadPastWorksheets() {
@@ -89,119 +93,82 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
     }
   }
 
-  function downloadWorksheetPDF(includeAnswers: boolean) {
-    if (!worksheet) return;
+  async function downloadWorksheetPDF(includeAnswers: boolean) {
+    if (!worksheet || !worksheetRef.current) return;
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const lineHeight = 7;
-    let y = margin;
+    setIsDownloading(true);
 
-    // Title
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(worksheet.title, margin, y);
-    y += lineHeight * 2;
+    try {
+      // Temporarily set the answers state for rendering
+      const originalShowAnswers = showAnswers;
+      setShowAnswers(includeAnswers);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(includeAnswers ? 'ANSWER KEY' : 'Student Worksheet', margin, y);
-    y += lineHeight * 1.5;
+      // Wait for state to update and render
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Questions
-    worksheet.questions.forEach((q, idx) => {
-      // Check if we need a new page
-      if (y > pageHeight - 40) {
-        doc.addPage();
-        y = margin;
-      }
-
-      // Question number and type
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      const questionHeader = `${idx + 1}. [${formatQuestionType(q.type)}]`;
-      doc.text(questionHeader, margin, y);
-      y += lineHeight;
-
-      // Question text
-      doc.setFont('helvetica', 'normal');
-      const questionLines = doc.splitTextToSize(q.question, pageWidth - 2 * margin);
-      questionLines.forEach((line: string) => {
-        if (y > pageHeight - 30) {
-          doc.addPage();
-          y = margin;
-        }
-        doc.text(line, margin, y);
-        y += lineHeight;
+      // Capture the worksheet as canvas with specific settings
+      const canvas = await html2canvas(worksheetRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: worksheetRef.current.scrollWidth,
+        windowHeight: worksheetRef.current.scrollHeight,
       });
 
-      // Options for multiple choice
-      if (q.type === 'multiple_choice' && q.options) {
-        doc.setFontSize(10);
-        q.options.forEach((option) => {
-          if (y > pageHeight - 30) {
-            doc.addPage();
-            y = margin;
-          }
-          const optionText = `   ${option}`;
-          doc.text(optionText, margin + 5, y);
-          y += lineHeight * 0.8;
-        });
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      // Calculate dimensions to fit on page with margins
+      const margin = 10;
+      const availableWidth = pdfWidth - (2 * margin);
+      const availableHeight = pdfHeight - (2 * margin);
+      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+
+      const scaledWidth = imgWidth * ratio;
+      const scaledHeight = imgHeight * ratio;
+
+      let yPosition = margin;
+      let heightLeft = scaledHeight;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', margin, yPosition, scaledWidth, scaledHeight);
+
+      heightLeft -= (pdfHeight - 2 * margin);
+
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        yPosition = -(pdfHeight - 2 * margin) * ((scaledHeight - heightLeft) / scaledHeight);
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, yPosition, scaledWidth, scaledHeight);
+        heightLeft -= (pdfHeight - 2 * margin);
       }
 
-      // Answer space or answer
-      if (includeAnswers) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Answer:', margin + 5, y);
-        doc.setFont('helvetica', 'normal');
-        const answerLines = doc.splitTextToSize(q.answer, pageWidth - 2 * margin - 10);
-        answerLines.forEach((line: string) => {
-          if (y > pageHeight - 25) {
-            doc.addPage();
-            y = margin;
-          }
-          doc.text(line, margin + 25, y);
-          y += lineHeight;
-        });
+      // Save the PDF
+      const filename = includeAnswers
+        ? `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}_answers.pdf`
+        : `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+      pdf.save(filename);
 
-        if (q.explanation) {
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'italic');
-          const explainLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, pageWidth - 2 * margin - 10);
-          explainLines.forEach((line: string) => {
-            if (y > pageHeight - 25) {
-              doc.addPage();
-              y = margin;
-            }
-            doc.text(line, margin + 25, y);
-            y += lineHeight * 0.9;
-          });
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-        }
-      } else {
-        // Blank lines for student answers
-        doc.setDrawColor(200);
-        for (let i = 0; i < 2; i++) {
-          if (y > pageHeight - 25) {
-            doc.addPage();
-            y = margin;
-          }
-          doc.line(margin + 5, y, pageWidth - margin, y);
-          y += lineHeight;
-        }
-      }
+      // Restore original state
+      setShowAnswers(originalShowAnswers);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
 
-      y += lineHeight * 0.5; // Space between questions
-    });
-
-    // Save the PDF
-    const filename = includeAnswers
-      ? `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}_answers.pdf`
-      : `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-    doc.save(filename);
+    setIsDownloading(false);
   }
 
   function formatQuestionType(type: string): string {
@@ -215,33 +182,61 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 bg-gray-900">
+    <div className="h-full flex flex-col bg-base-100">
       {!worksheet ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-lg">
-            <div className="text-6xl mb-6">📝</div>
-            <h3 className="text-2xl font-bold text-blue-400 mb-3">Worksheet Generator</h3>
-            <p className="text-gray-300 mb-6">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div className="text-center max-w-2xl w-full">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <svg className="w-10 h-10 sm:w-12 sm:h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-base-content mb-3">Worksheet Generator</h3>
+            <p className="text-sm sm:text-base text-base-content/60 mb-4 sm:mb-6 px-4">
               Generate practice exercises and comprehension questions based on your PDF content.
-              Perfect for classroom use or self-study.
             </p>
 
-            <div className="space-y-4 mb-8">
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-gray-300 mb-2">Features:</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>✓ Multiple choice questions</li>
-                  <li>✓ True/False statements</li>
-                  <li>✓ Fill-in-the-blank exercises</li>
-                  <li>✓ Short answer questions</li>
-                  <li>✓ Greek grammar and vocabulary focus</li>
-                  <li>✓ Downloadable PDF with answer key</li>
+            {/* Past worksheets dropdown - AT THE TOP */}
+            {savedWorksheets.length > 0 && (
+              <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4 mb-4 sm:mb-6">
+                <label className="block text-xs sm:text-sm font-medium mb-2 text-primary">
+                  Load Previous Worksheet:
+                </label>
+                <select
+                  className="select select-bordered w-full text-sm sm:text-base"
+                  onChange={(e) => {
+                    const selected = savedWorksheets.find(w => w.id === e.target.value);
+                    if (selected) loadWorksheet(selected);
+                  }}
+                  disabled={isLoadingPast}
+                  defaultValue=""
+                >
+                  <option value="">Select a worksheet...</option>
+                  {savedWorksheets.map((ws) => (
+                    <option key={ws.id} value={ws.id}>
+                      {ws.title} - {new Date(ws.createdAt).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+              <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4 text-left">
+                <h4 className="font-medium text-sm sm:text-base mb-2 text-primary">Features:</h4>
+                <ul className="text-xs sm:text-sm text-base-content/70 space-y-1">
+                  <li>• Multiple choice questions</li>
+                  <li>• True/False statements</li>
+                  <li>• Fill-in-the-blank exercises</li>
+                  <li>• Short answer questions</li>
+                  <li>• Greek grammar and vocabulary focus</li>
+                  <li>• Downloadable PDF with answer key</li>
                 </ul>
               </div>
 
               {/* Number of questions selector */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4">
+                <label className="block text-xs sm:text-sm font-medium mb-2 text-primary">
                   Number of Questions: {numQuestions}
                 </label>
                 <input
@@ -250,193 +245,205 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
                   max="10"
                   value={numQuestions}
                   onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-                  className="range range-primary range-sm"
+                  className="range range-primary range-sm w-full"
                   disabled={isGenerating}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between text-xs text-base-content/60 mt-1">
                   <span>3</span>
                   <span>10</span>
                 </div>
               </div>
-
-              {/* Past worksheets dropdown */}
-              {savedWorksheets.length > 0 && (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Load Previous Worksheet:
-                  </label>
-                  <select
-                    className="select select-bordered w-full bg-gray-700 border-gray-600 text-white"
-                    onChange={(e) => {
-                      const selected = savedWorksheets.find(w => w.id === e.target.value);
-                      if (selected) loadWorksheet(selected);
-                    }}
-                    disabled={isLoadingPast}
-                  >
-                    <option value="">Select a worksheet...</option>
-                    {savedWorksheets.map((ws) => (
-                      <option key={ws.id} value={ws.id}>
-                        {ws.title} - {new Date(ws.createdAt).toLocaleDateString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !extractedText}
-              className="btn btn-primary btn-lg"
+              className="btn btn-primary btn-md sm:btn-lg w-full max-w-md"
             >
               {isGenerating ? (
                 <>
-                  <span className="loading loading-spinner"></span>
+                  <span className="loading loading-spinner loading-sm"></span>
                   Generating Worksheet...
                 </>
               ) : (
-                <>
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Generate New Worksheet
-                </>
+                'Generate New Worksheet'
               )}
             </button>
 
             {!extractedText && (
-              <p className="text-sm text-error mt-4">
+              <p className="text-xs sm:text-sm text-error mt-4">
                 No text extracted from this PDF. Please upload a text-based PDF.
               </p>
             )}
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-gray-900">
-          {/* Action buttons */}
-          <div className="sticky top-0 bg-gray-900 border-b border-gray-700 pb-4 mb-4 flex flex-wrap gap-3 items-center justify-between z-10">
-            <h3 className="text-2xl font-bold text-white">{worksheet.title}</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowAnswers(!showAnswers)}
-                className="btn btn-sm btn-outline text-gray-300 hover:text-white hover:border-blue-500"
-              >
-                {showAnswers ? 'Hide Answers' : 'Show Answers'}
-              </button>
-              <button
-                onClick={() => downloadWorksheetPDF(false)}
-                className="btn btn-sm btn-outline text-gray-300 hover:text-white hover:border-blue-500"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Worksheet
-              </button>
-              <button
-                onClick={() => downloadWorksheetPDF(true)}
-                className="btn btn-sm btn-primary"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Answer Key
-              </button>
-              <button
-                onClick={() => {
-                  setWorksheet(null);
-                  setCurrentWorksheetId(null);
-                }}
-                className="btn btn-sm btn-ghost text-gray-400"
-              >
-                Close
-              </button>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Action buttons - Fixed at top */}
+          <div className="bg-base-200 border-b border-base-300 p-3 sm:p-4 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <h3 className="text-base sm:text-xl font-bold text-base-content truncate">{worksheet.title}</h3>
+              <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                <button
+                  onClick={() => setShowAnswers(!showAnswers)}
+                  className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
+                  disabled={isDownloading}
+                >
+                  {showAnswers ? 'Hide Answers' : 'Show Answers'}
+                </button>
+                <button
+                  onClick={() => downloadWorksheetPDF(false)}
+                  className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <span className="hidden sm:inline">Download Worksheet</span>
+                  )}
+                  <span className="sm:hidden">Download</span>
+                </button>
+                <button
+                  onClick={() => downloadWorksheetPDF(true)}
+                  className="btn btn-xs sm:btn-sm btn-primary flex-1 sm:flex-none"
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <span className="hidden sm:inline">Download Answer Key</span>
+                  )}
+                  <span className="sm:hidden">Answers</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setWorksheet(null);
+                    setCurrentWorksheetId(null);
+                  }}
+                  className="btn btn-xs sm:btn-sm btn-ghost"
+                  disabled={isDownloading}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Worksheet content */}
-          <div className="bg-white text-black rounded-lg p-8 max-w-4xl mx-auto shadow-2xl">
-            <div className="border-b-2 border-gray-300 pb-4 mb-6">
-              <h1 className="text-3xl font-bold text-gray-800">{worksheet.title}</h1>
-              <p className="text-sm text-gray-600 mt-2">
-                {showAnswers ? 'Answer Key' : 'Student Worksheet'}
-              </p>
-            </div>
+          {/* Worksheet content - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-base-100">
+            <div
+              ref={worksheetRef}
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#000000',
+                padding: '40px',
+                maxWidth: '800px',
+                margin: '0 auto',
+                fontFamily: 'Arial, sans-serif',
+                minHeight: '1000px',
+              }}
+            >
+              {/* Header */}
+              <div style={{ borderBottom: '2px solid #000000', paddingBottom: '15px', marginBottom: '25px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000000', margin: '0 0 10px 0' }}>
+                  {worksheet.title}
+                </h1>
+                <p style={{ fontSize: '14px', color: '#333333', margin: '0' }}>
+                  {showAnswers ? 'Answer Key' : 'Student Worksheet'}
+                </p>
+                <div style={{ marginTop: '10px', fontSize: '12px', color: '#666666' }}>
+                  <p style={{ margin: '5px 0' }}>Name: _______________________________</p>
+                  <p style={{ margin: '5px 0' }}>Date: _______________________________</p>
+                </div>
+              </div>
 
-            <div className="space-y-6">
-              {worksheet.questions.map((q, idx) => (
-                <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
-                  <div className="flex items-start gap-2 mb-2">
-                    <span className="font-bold text-lg text-gray-800">{idx + 1}.</span>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded">
+              {/* Questions */}
+              <div style={{ marginTop: '20px' }}>
+                {worksheet.questions.map((q, idx) => (
+                  <div key={idx} style={{ marginBottom: '35px', pageBreakInside: 'avoid' }}>
+                    {/* Question Header */}
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '12px', color: '#666666', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                         {formatQuestionType(q.type)}
                       </span>
-                      <p className="text-lg mt-2 text-gray-800 font-medium">{q.question}</p>
-
-                      {/* Multiple choice options */}
-                      {q.type === 'multiple_choice' && q.options && (
-                        <div className="mt-3 space-y-2 ml-4">
-                          {q.options.map((option, optIdx) => (
-                            <div key={optIdx} className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-gray-400 rounded"></div>
-                              <span className="text-gray-700">{option}</span>
-                              {showAnswers && option === q.answer && (
-                                <span className="text-green-600 font-bold ml-2">✓ Correct</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Answer section */}
-                      {showAnswers && (
-                        <div className="mt-3 bg-green-50 border border-green-200 rounded p-3">
-                          <p className="text-sm font-bold text-green-800">Answer:</p>
-                          <p className="text-gray-800 mt-1">{q.answer}</p>
-                          {q.explanation && (
-                            <>
-                              <p className="text-sm font-bold text-green-800 mt-2">Explanation:</p>
-                              <p className="text-gray-700 text-sm mt-1">{q.explanation}</p>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Blank lines for student answers */}
-                      {!showAnswers && q.type !== 'multiple_choice' && (
-                        <div className="mt-3 space-y-2">
-                          <div className="border-b border-gray-300 py-2"></div>
-                          <div className="border-b border-gray-300 py-2"></div>
-                        </div>
-                      )}
+                      <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#000000', margin: '0', lineHeight: '1.5' }}>
+                        {idx + 1}. {q.question}
+                      </p>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Delete button */}
-          {currentWorksheetId && (
-            <div className="flex justify-center mt-6">
-              <button
-                onClick={() => handleDelete(currentWorksheetId)}
-                className="btn btn-sm btn-error btn-outline"
-              >
-                Delete This Worksheet
-              </button>
+                    {/* Multiple choice options */}
+                    {q.type === 'multiple_choice' && q.options && (
+                      <div style={{ marginTop: '12px', marginLeft: '20px' }}>
+                        {q.options.map((option, optIdx) => (
+                          <div key={optIdx} style={{ marginBottom: '8px', display: 'flex', alignItems: 'flex-start' }}>
+                            <span style={{ marginRight: '8px', fontSize: '14px' }}>
+                              {String.fromCharCode(65 + optIdx)}.
+                            </span>
+                            <span style={{ fontSize: '14px', color: '#000000' }}>
+                              {option}
+                              {showAnswers && option === q.answer && (
+                                <strong style={{ marginLeft: '10px' }}> (CORRECT)</strong>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Answer section for answer key */}
+                    {showAnswers && (
+                      <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f0f0f0', border: '1px solid #cccccc' }}>
+                        <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0 0 5px 0' }}>
+                          ANSWER:
+                        </p>
+                        <p style={{ fontSize: '13px', margin: '0 0 10px 0' }}>
+                          {q.answer}
+                        </p>
+                        {q.explanation && (
+                          <>
+                            <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '10px 0 5px 0' }}>
+                              EXPLANATION:
+                            </p>
+                            <p style={{ fontSize: '13px', margin: '0' }}>
+                              {q.explanation}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Answer lines for student worksheet */}
+                    {!showAnswers && q.type !== 'multiple_choice' && (
+                      <div style={{ marginTop: '15px' }}>
+                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: '40px', paddingTop: '15px', borderTop: '1px solid #cccccc', textAlign: 'center' }}>
+                <p style={{ fontSize: '10px', color: '#666666', margin: '0' }}>
+                  Generated with Modern Greek Learning Assistant
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* Delete button */}
+            {currentWorksheetId && (
+              <div className="flex justify-center mt-4 sm:mt-6">
+                <button
+                  onClick={() => handleDelete(currentWorksheetId)}
+                  className="btn btn-xs sm:btn-sm btn-error btn-outline"
+                >
+                  Delete This Worksheet
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
