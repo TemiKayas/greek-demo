@@ -790,6 +790,76 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 ---
 
+## Phase 2 Implementation Details
+
+### Authentication Setup Process
+1. Installed dependencies:
+   ```bash
+   npm install next-auth@beta bcryptjs zod @auth/prisma-adapter
+   npm install -D @types/bcryptjs
+   ```
+2. Generated `NEXTAUTH_SECRET` and added to `.env`:
+   ```bash
+   openssl rand -base64 32
+   ```
+3. Created `lib/auth.ts` with NextAuth v5 configuration
+4. Created auth server actions in `app/actions/auth.ts`
+5. Created auth pages:
+   - `app/(auth)/login/page.tsx` - Login form
+   - `app/(auth)/signup/page.tsx` - Signup with role selection
+6. Created API route handler: `app/api/auth/[...nextauth]/route.ts`
+7. Created `middleware.ts` for route protection
+
+### Key Implementation Decisions
+- **NextAuth v5 (beta)**: Uses new `auth()` function pattern
+- **JWT sessions**: Stateless, better for serverless environments
+- **No PrismaAdapter**: Simplified approach, manual user management
+- **Role in JWT**: Stored in token for fast access in middleware
+- **Credentials provider**: Email/password (can add OAuth later)
+
+### Route Protection Strategy
+```typescript
+// middleware.ts
+- Public routes: /, /login, /signup
+- Teacher routes: /classes, /library → redirect to /classes after login
+- Student routes: /dashboard, /history → redirect to /dashboard after login
+- Already logged in + visiting auth pages → redirect to dashboard
+- Not logged in + visiting protected route → redirect to /login with callback
+```
+
+### Auth Server Actions
+```typescript
+signup(formData) {
+  1. Validate with Zod
+  2. Check if user exists
+  3. Hash password (bcrypt, rounds=12)
+  4. Create user with role
+  5. Return userId
+}
+
+login(formData) {
+  1. Validate with Zod
+  2. Call NextAuth signIn()
+  3. Handle AuthError
+  4. Return success/error
+}
+```
+
+### Updated Actions for Auth
+- `chatHistory.ts` - Now requires classId, userId from session
+- `pdf.ts` - Requires authentication, gets userId from session
+- `flashcard.ts` - Gets userId from PDF owner
+- `worksheet.ts` - Gets userId from PDF owner
+
+### Gotchas Encountered
+- **NextAuth v5 types**: Had to manually extend session/user types
+- **Zod enum error messages**: Use `{ message: '...' }` not `{ errorMap: ... }`
+- **Zod error access**: Use `.issues[0]` not `.errors[0]`
+- **ChatConversation schema change**: Messages are now relations, not JSON string
+- **Material userId required**: All materials need userId for authorization
+
+---
+
 ## Phase 1 Implementation Details
 
 ### Database Setup Process
@@ -900,10 +970,37 @@ vercel logs                          # View logs
 ---
 
 **Last Updated:** October 29, 2025
-**Version:** 2.1 - Phase 1 Complete
-**Status:** ✅ Database Ready | Starting Phase 2 (Authentication)
+**Version:** 2.2 - Phase 1-2 Complete
+**Status:** ✅ Database Ready | ✅ Auth Ready | Starting Phase 3 (Class Management)
 
 ## Changelog
+
+**v2.2 (October 29, 2025)** - Phase 2 Complete (Authentication)
+- ✅ **NextAuth.js v5 Implementation**
+  - Configured NextAuth with Credentials provider
+  - Implemented bcrypt password hashing
+  - Created JWT-based sessions with role claims
+  - Extended types for user roles (TEACHER, STUDENT, ADMIN)
+- ✅ **Authentication Pages**
+  - Login page with email/password
+  - Signup page with role selection (Teacher/Student)
+  - DaisyUI styled forms with error handling
+  - Form validation using Zod
+- ✅ **Route Protection Middleware**
+  - Role-based access control
+  - Teacher routes: `/classes`, `/library`
+  - Student routes: `/dashboard`, `/history`
+  - Public routes: `/`, `/login`, `/signup`
+  - Auto-redirect based on role after login
+- ✅ **Auth Server Actions**
+  - signup() - create new user with role
+  - login() - authenticate and create session
+  - getCurrentUser() - get session user
+- ✅ **Database Integration Updates**
+  - Updated chatHistory.ts for new ChatConversation schema
+  - Added getClassChatHistory() for teacher insights
+  - Fixed Material/PDF actions to require userId
+  - All protected actions now check authentication
 
 **v2.1 (October 29, 2025)** - Phase 1 Complete
 - ✅ **Database Schema Implemented**

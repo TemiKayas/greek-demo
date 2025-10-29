@@ -23,15 +23,15 @@ export async function uploadAndProcessPDF(
       return { success: false, error: validation.error! };
     }
 
-    // Get or create default user
-    let user = await db.user.findFirst();
-    if (!user) {
-      user = await db.user.create({
-        data: {
-          name: 'Demo User',
-        },
-      });
+    // Get authenticated user (required for production)
+    const { auth } = await import('@/lib/auth');
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
     }
+
+    const userId = session.user.id;
 
     // Upload to local filesystem
     console.log('Saving PDF to local filesystem...');
@@ -41,9 +41,9 @@ export async function uploadAndProcessPDF(
     console.log('Saving PDF record to database...');
     const pdfRecord = await db.pDF.create({
       data: {
-        userId: user.id,
+        userId,
         filename: file.name,
-        filePath,
+        blobUrl: filePath, // Updated field name to match schema
         fileSize: file.size,
         mimeType: file.type,
       },
@@ -121,9 +121,9 @@ export async function deletePDF(pdfId: string): Promise<ActionResult<void>> {
       return { success: false, error: 'PDF not found' };
     }
 
-    // Delete the file from filesystem
+    // Delete the file from blob storage
     const { deletePDF: deleteFile } = await import('@/lib/blob');
-    await deleteFile(pdf.filePath);
+    await deleteFile(pdf.blobUrl);
 
     // Delete from database (cascade will handle related records)
     await db.pDF.delete({

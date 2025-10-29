@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
 import { db } from '@/lib/db';
 
 export async function GET(
@@ -18,16 +17,19 @@ export async function GET(
       return NextResponse.json({ error: 'PDF not found' }, { status: 404 });
     }
 
-    // Read the file from local filesystem
-    const fileBuffer = await readFile(pdf.filePath);
+    // Redirect to Vercel Blob URL (or fetch and return)
+    // Option 1: Simple redirect
+    return NextResponse.redirect(pdf.blobUrl);
 
-    // Return the PDF file (convert Buffer to Uint8Array for proper typing)
-    return new NextResponse(new Uint8Array(fileBuffer), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${pdf.filename}"`,
-      },
-    });
+    // Option 2: Fetch and proxy (use if you need auth checks)
+    // const response = await fetch(pdf.blobUrl);
+    // const blob = await response.blob();
+    // return new NextResponse(blob, {
+    //   headers: {
+    //     'Content-Type': 'application/pdf',
+    //     'Content-Disposition': `inline; filename="${pdf.filename}"`,
+    //   },
+    // });
   } catch (error) {
     console.error('Error serving PDF:', error);
     return NextResponse.json(

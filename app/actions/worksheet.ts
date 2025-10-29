@@ -130,6 +130,7 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no extra text.`;
     const material = await db.material.create({
       data: {
         pdfId: pdfId,
+        userId: pdf.userId, // Add userId from PDF owner
         type: 'WORKSHEET',
         title: worksheetData.title,
         content: JSON.stringify(worksheetData),

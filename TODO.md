@@ -72,29 +72,39 @@ GEMINI_API_KEY="<your-key>"
 
 ---
 
-### Phase 2: Authentication System (Week 1)
+### Phase 2: Authentication System (Week 1) ✅
 **Goal:** Secure auth with teacher/student roles
 
-- [ ] **NextAuth.js Setup**
-  - [ ] Create `lib/auth.ts` with NextAuth config
-  - [ ] Set up Credentials provider
-  - [ ] Add Prisma adapter
-  - [ ] Implement password hashing (bcryptjs)
-  - [ ] Add JWT with role claims
-  - [ ] Create auth utilities
+- [x] **NextAuth.js Setup**
+  - [x] Create `lib/auth.ts` with NextAuth config
+  - [x] Set up Credentials provider
+  - [x] Implement password hashing (bcryptjs)
+  - [x] Add JWT with role claims
+  - [x] Type extensions for session/user
 
-- [ ] **Auth Pages**
-  - [ ] Login page (`app/(auth)/login/page.tsx`)
-  - [ ] Signup page with role selection (`app/(auth)/signup/page.tsx`)
-  - [ ] Server actions (`app/actions/auth.ts`)
-  - [ ] Form validation with Zod
-  - [ ] Error handling & loading states
+- [x] **Auth Pages**
+  - [x] Login page (`app/(auth)/login/page.tsx`)
+  - [x] Signup page with role selection (`app/(auth)/signup/page.tsx`)
+  - [x] Server actions (`app/actions/auth.ts`)
+  - [x] Form validation with Zod
+  - [x] Error handling & loading states
+  - [x] DaisyUI styled forms
 
-- [ ] **Route Protection**
-  - [ ] Create `middleware.ts`
-  - [ ] Protect teacher routes (`/teacher/*`)
-  - [ ] Protect student routes (`/student/*`)
-  - [ ] Allow public routes (`/`, `/login`, `/signup`)
+- [x] **Route Protection**
+  - [x] Create `middleware.ts`
+  - [x] Protect teacher routes (`/classes`, `/library`)
+  - [x] Protect student routes (`/dashboard`, `/history`)
+  - [x] Allow public routes (`/`, `/login`, `/signup`)
+  - [x] Role-based redirects after login
+
+- [x] **Auth API Routes**
+  - [x] NextAuth API handler (`app/api/auth/[...nextauth]/route.ts`)
+
+- [x] **Database Integration**
+  - [x] Update existing actions to require authentication
+  - [x] Update chatHistory.ts for new schema
+  - [x] Fix Material/PDF actions to include userId
+  - [x] Add getClassChatHistory for teacher insights
 
 ---
 
@@ -373,13 +383,13 @@ GEMINI_API_KEY="<your-key>"
 
 ## 🗓️ Timeline Summary
 
-**Week 1:** ✅ Database (DONE), Auth (NEXT), Class Creation
+**Week 1:** ✅ Database (DONE), ✅ Auth (DONE), Class Creation (NEXT)
 **Week 2:** Student Enrollment, Material Sharing
 **Week 3:** UI Polish, Student Experience, Testing
 **Week 4:** Final Testing, Deployment, Launch
 
 **Total:** ~4 weeks to production-ready MVP
-**Current Status:** Phase 1 Complete ✅ | Starting Phase 2 (Auth)
+**Current Status:** Phase 1-2 Complete ✅ | Starting Phase 3 (Class Management)
 
 ---
 
@@ -406,4 +416,4 @@ GEMINI_API_KEY="<your-key>"
 ---
 
 **Last Updated:** October 29, 2025
-**Status:** Phase 1 Complete ✅ | Phase 2 In Progress (Authentication)
+**Status:** Phase 1-2 Complete ✅ | Phase 3 Next (Class Management)
