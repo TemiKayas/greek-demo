@@ -1,6 +1,12 @@
 # Claude Implementation Notes
 
-This file contains technical notes, patterns, and gotchas for Claude (or any developer) working on WordWyrm.
+This file contains technical notes, patterns, and gotchas for Claude (or any developer) working on Greek Demo (formerly WordWyrm).
+
+---
+
+## Product Overview
+
+**Production MVP:** A multi-tenant education platform where teachers create classes, upload PDFs, generate AI-powered learning materials (flashcards, worksheets, summaries), and share them with students. Students join classes via invite codes, access materials, use an AI chatbot, and track their learning. **Key differentiator:** Teachers can view all student chat histories to identify common questions and struggles.
 
 ---
 
@@ -9,7 +15,7 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
 ### Why Next.js Only (No Django)?
 
 **Original Stack:** Django + Next.js + Supabase + Celery + Redis
-**New Stack:** Next.js + Vercel Postgres + Vercel Blob
+**New Stack:** Next.js 15 + Vercel Postgres (Neon) + Vercel Blob
 
 **Rationale:**
 1. **Simplicity**: Single codebase, one language (TypeScript)
@@ -33,46 +39,190 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
 
 ## Database Schema Notes
 
+### Core Models (Production MVP)
+
+**Primary Models:**
+1. `User` - Teachers and students (role-based)
+2. `Class` - Teacher-owned classrooms
+3. `ClassMembership` - Student enrollments in classes
+4. `InviteCode` - Class invite system with expiration
+5. `PDF` - Uploaded PDF documents
+6. `ProcessedContent` - Extracted text from PDFs
+7. `Flashcard` - Generated flashcard sets
+8. `Worksheet` - Generated worksheets
+9. `ChatConversation` - Student chat sessions **with class/material context**
+10. `ChatMessage` - Individual messages in conversations
+11. `ClassMaterial` - Links materials to classes (many-to-many)
+
 ### Key Design Decisions
 
 1. **User Role Enum**: `TEACHER`, `STUDENT`, `ADMIN`
-   - Single `User` table, separate profile tables
+   - Single `User` table, role-based access control
    - Enables future features like users with both roles
    - Admin role reserved for platform management
 
-2. **Separate `PDF` and `ProcessedContent` tables**
+2. **Class-based Multi-tenancy**
+   - Teachers create classes (one-to-many)
+   - Students join via invite codes (many-to-many via ClassMembership)
+   - Materials are shared at the class level (not individual students)
+   - **Key insight:** All student activity (chats, views) is linked to their class context
+
+3. **Invite Code System**
+   - 6 alphanumeric characters (e.g., "ABC123")
+   - Optional expiration date
+   - Can be revoked by teacher
+   - Uniqueness enforced at DB level
+   - Used for: `/join/ABC123` URL pattern
+
+4. **Chat Conversation Context** ⭐ **CRITICAL FEATURE**
+   - Every `ChatConversation` has:
+     - `userId` (the student)
+     - `classId` (which class they were in when chatting)
+     - `materialId` (optional - which PDF/flashcard they were viewing)
+   - This allows teachers to:
+     - View ALL chats from their classes
+     - Filter by class, student, or material
+     - Identify which topics confuse students most
+     - See questions asked while viewing specific materials
+
+5. **Material-Class Linking** (`ClassMaterial`)
+   - Many-to-many relationship
+   - A flashcard set can be shared with multiple classes
+   - A class can have access to multiple materials
+   - Tracks when material was shared with class
+   - Allows teachers to bulk-share or unshare
+
+6. **Separate `PDF` and `ProcessedContent` tables**
    - Why: PDFs can be uploaded but processing can fail
    - Allows retry logic without re-uploading
    - Keeps blob URLs separate from text content
+   - ProcessedContent links to PDF via foreign key
 
-3. **Quiz JSON structure**
+7. **Flashcard/Worksheet JSON structure**
    - Stored as `Json` type in Prisma
-   - Flexible schema (can change quiz format without migrations)
-   - Example structure:
+   - Flexible schema (can change format without migrations)
+   - Example flashcard structure:
    ```typescript
    {
-     questions: [
+     cards: [
        {
-         question: string,
-         options: string[],
-         answer: string,
-         explanation?: string
+         front: string,
+         back: string,
+         hint?: string
        }
      ]
    }
    ```
 
-4. **GameSession constraints**
-   - `@@unique([gameId, studentId])`: One session per student per game
-   - To allow multiple attempts, we'd need to change this to:
-     - Remove unique constraint
-     - Add `attemptNumber` field
-     - Add composite index on `[gameId, studentId, attemptNumber]`
+### Schema Indexes (Performance)
 
-5. **Share codes**
-   - 6 alphanumeric characters (e.g., "ABC123")
-   - Uniqueness enforced at DB level
-   - Collision probability low but handle in code anyway
+**Critical indexes to add:**
+```prisma
+// Class lookups
+@@index([teacherId])
+
+// Membership queries
+@@index([classId, userId])
+@@index([userId, classId])
+
+// Chat queries (VERY IMPORTANT for teacher insights)
+@@index([classId, createdAt])  // Get all chats in a class, sorted by time
+@@index([userId, classId])      // Get all chats by a student in a class
+@@index([materialId, classId])  // Get all chats about a specific material
+
+// Material sharing
+@@index([classId])
+@@index([materialType, materialId])
+
+// Invite codes
+@@index([code])  // Fast lookup for join flow
+@@index([classId, isActive])  // Get active codes for a class
+```
+
+---
+
+## Teacher Chat Insights Feature ⭐
+
+### Overview
+One of the platform's key differentiators is giving teachers visibility into student questions and struggles through chat history analysis.
+
+### Implementation Strategy
+
+**Database Structure:**
+```typescript
+// When a student starts a chat
+ChatConversation {
+  id: string
+  userId: string          // The student
+  classId: string         // Which class they're enrolled in
+  materialId?: string     // Optional: PDF/flashcard they were viewing
+  title: string           // Auto-generated or user-provided
+  createdAt: DateTime
+  messages: ChatMessage[]
+}
+
+ChatMessage {
+  id: string
+  conversationId: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: DateTime
+}
+```
+
+**Teacher Queries:**
+```typescript
+// Get all chats from a class
+const chats = await db.chatConversation.findMany({
+  where: { classId: classId },
+  include: {
+    user: { select: { name: true, email: true } },
+    messages: { orderBy: { createdAt: 'asc' } },
+    material: true  // Optional: PDF/flashcard info
+  },
+  orderBy: { createdAt: 'desc' }
+});
+
+// Get chats about a specific material
+const materialChats = await db.chatConversation.findMany({
+  where: {
+    classId: classId,
+    materialId: materialId
+  }
+});
+
+// Get all chats from a specific student
+const studentChats = await db.chatConversation.findMany({
+  where: {
+    userId: studentId,
+    classId: classId
+  }
+});
+```
+
+**UI Components:**
+1. **Class Insights Page** (`/teacher/classes/[classId]/insights`)
+   - Overview stats: total chats, active students, common topics
+   - List of all conversations with filters
+   - Search by student name, date, or material
+
+2. **Chat Viewer Component**
+   - Shows full conversation thread
+   - Student info (name, email)
+   - Material context (if applicable)
+   - Timestamp for each message
+
+3. **Analytics Dashboard** (Future enhancement)
+   - Most asked questions
+   - Topics students struggle with
+   - Peak chat times
+   - Students who need extra help
+
+**Privacy Considerations:**
+- Students know chats are visible to teachers (mention in TOS/privacy policy)
+- Teachers only see chats from THEIR classes
+- No cross-class data leakage
+- Consider adding a "private mode" toggle for sensitive questions (post-MVP)
 
 ---
 
@@ -80,30 +230,75 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
 
 ```
 app/
-├── (auth)/          # Public auth pages
-├── (teacher)/       # Teacher-only pages (protected)
-├── (student)/       # Student-only pages (protected)
-├── play/            # Public game pages (no auth required)
-├── actions/         # Server Actions (shared)
-└── api/             # API routes (when Server Actions won't work)
+├── (auth)/                          # Public auth pages
+│   ├── login/page.tsx
+│   └── signup/page.tsx
+├── (teacher)/                       # Teacher-only pages (protected)
+│   ├── layout.tsx                   # Shared teacher layout
+│   ├── dashboard/page.tsx           # Teacher home
+│   ├── classes/
+│   │   ├── page.tsx                 # List all classes
+│   │   └── [classId]/
+│   │       ├── page.tsx             # Class details & roster
+│   │       ├── insights/page.tsx    # Student chat history viewer ⭐
+│   │       └── settings/page.tsx    # Class settings
+│   └── library/                     # Materials library
+│       ├── page.tsx                 # All materials with share options
+│       └── [materialId]/page.tsx    # Material detail
+├── (student)/                       # Student-only pages (protected)
+│   ├── layout.tsx                   # Shared student layout
+│   ├── dashboard/page.tsx           # Student home
+│   ├── classes/
+│   │   └── [classId]/page.tsx       # Class materials view
+│   └── history/page.tsx             # Student's own chat history
+├── join/[inviteCode]/page.tsx       # Public class join page
+├── actions/                         # Server Actions (shared)
+│   ├── auth.ts                      # Auth actions
+│   ├── class.ts                     # Class management
+│   ├── materials.ts                 # Material sharing
+│   ├── chat.ts                      # Chat conversations
+│   └── chatHistory.ts               # Existing (needs update)
+└── api/                             # API routes (when Server Actions won't work)
+    └── auth/[...nextauth]/route.ts  # NextAuth handler
 
 lib/
-├── auth.ts          # NextAuth config
-├── db.ts            # Prisma client singleton
-├── blob.ts          # Vercel Blob helpers
-├── processors/      # Business logic
+├── auth.ts                          # NextAuth config
+├── db.ts                            # Prisma client singleton
+├── blob.ts                          # Vercel Blob helpers
+├── processors/                      # Business logic
 │   ├── pdf-processor.ts
 │   └── ai-generator.ts
-└── utils/           # Utility functions
+└── utils/                           # Utility functions
+    ├── invite-code.ts               # Generate invite codes (updated from share-code)
     ├── qr-code.ts
-    ├── share-code.ts
     └── validation.ts
+
+components/
+├── shared/                          # Shared UI components
+│   ├── Button.tsx
+│   ├── Card.tsx
+│   └── Modal.tsx
+├── teacher/
+│   ├── ClassCard.tsx
+│   ├── MaterialCard.tsx
+│   ├── ChatHistoryViewer.tsx       # ⭐ Key component for insights
+│   └── InviteCodeDisplay.tsx
+└── student/
+    ├── MaterialViewer.tsx
+    └── ChatInterface.tsx
 ```
 
 **Route Groups:**
 - `(auth)`, `(teacher)`, `(student)` = Groups don't affect URL
 - Allows shared layouts without adding URL segments
-- Example: `app/(teacher)/dashboard/page.tsx` → `/dashboard`
+- Example: `app/(teacher)/classes/page.tsx` → `/classes`
+- Example: `app/(student)/classes/page.tsx` → `/classes` (same URL, different content!)
+
+**Key Routes:**
+- Teacher creates class → `/classes`
+- Teacher views insights → `/classes/abc123/insights` ⭐
+- Student joins → `/join/ABC123`
+- Student views materials → `/classes/abc123`
 
 ---
 
@@ -595,6 +790,47 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 ---
 
+## Phase 1 Implementation Details
+
+### Database Setup Process
+1. Created Vercel Postgres (Neon) via Vercel dashboard
+2. Created Vercel Blob storage via Vercel dashboard
+3. Ran `vercel link` and `vercel env pull` to get environment variables
+4. Updated `prisma/schema.prisma`:
+   - Changed provider from `sqlite` to `postgresql`
+   - Set `url = env("DATABASE_URL")`
+   - Set `directUrl = env("DATABASE_URL_UNPOOLED")`
+5. Created `.env` file (Prisma reads this, not `.env.local`)
+6. Ran `npx prisma generate` to create Prisma Client
+7. Ran `npx prisma db push` to sync schema to database
+
+### Gotchas Encountered
+- **Prisma reads `.env` not `.env.local`**: Had to copy `.env.local` to `.env`
+- **Environment variable naming**: Vercel creates `DATABASE_URL_UNPOOLED`, not `POSTGRES_URL_NON_POOLING`
+- **Opposite relations required**: ChatConversation → PDF relation needed `chatConversations` field on PDF model
+
+### Database Models Summary
+**11 Models Created:**
+1. User (with email, passwordHash, role)
+2. Class (teacher-owned)
+3. ClassMembership (student enrollments)
+4. InviteCode (6-char codes with expiration)
+5. PDF (Vercel Blob URLs)
+6. ProcessedContent (extracted text)
+7. Material (flashcards, worksheets, etc.)
+8. ClassMaterial (many-to-many sharing)
+9. ChatConversation (with classId + materialId context) ⭐
+10. ChatMessage (structured messages)
+
+**Key Indexes:**
+- Chat queries: `[classId, createdAt]`, `[classId, userId]`, `[materialId, classId]`
+- User lookups: `[email]`, `[role]`
+- Class queries: `[teacherId]`, `[isActive]`
+- Memberships: `[classId, userId]` unique
+- Invite codes: `[code]` unique
+
+---
+
 ## Common Pitfalls
 
 ### 1. Prisma Client in Server Actions
@@ -663,5 +899,38 @@ vercel logs                          # View logs
 
 ---
 
-**Last Updated:** October 15, 2025
-**Version:** 1.0
+**Last Updated:** October 29, 2025
+**Version:** 2.1 - Phase 1 Complete
+**Status:** ✅ Database Ready | Starting Phase 2 (Authentication)
+
+## Changelog
+
+**v2.1 (October 29, 2025)** - Phase 1 Complete
+- ✅ **Database Schema Implemented**
+  - Migrated from SQLite to PostgreSQL (Vercel Neon)
+  - Created 11 production models (User, Class, ClassMembership, InviteCode, etc.)
+  - Added ChatConversation with classId/materialId context for teacher insights
+  - Implemented all strategic indexes for performance
+- ✅ **Vercel Infrastructure Setup**
+  - Connected to Vercel Postgres (Neon)
+  - Connected to Vercel Blob storage
+  - Environment variables configured
+  - Database schema pushed and verified
+- 📝 **Implementation Notes Added**
+  - Prisma uses `.env` file (not `.env.local`)
+  - Schema uses `DATABASE_URL` and `DATABASE_URL_UNPOOLED`
+  - All relations and cascade deletes configured
+  - lib/db.ts singleton already in place
+
+**v2.0 (January 2025)**
+- Shifted to production MVP with class management system
+- Added invite code system for student enrollment
+- Implemented material-class sharing architecture
+- **Added teacher chat insights feature** (view student questions/struggles)
+- Updated file structure for class-based multi-tenancy
+- Added comprehensive database schema with indexes
+- Updated architecture for Vercel Postgres (Neon) + Blob storage
+
+**v1.0 (October 2025)**
+- Initial migration notes from Django stack
+- Basic PDF processing and AI generation patterns

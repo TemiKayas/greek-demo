@@ -1,336 +1,409 @@
-# WordWyrm Migration & Development TODO
+# Greek Demo → Production MVP TODO
 
-## Project Overview
-Migrating from Django + Next.js + Supabase stack to a pure Next.js + Vercel Postgres solution. Building a multi-tenant education platform where teachers can upload PDFs, generate quizzes, and share games with students.
+## 🎯 Product Vision
+A production-ready education platform where teachers create classes, upload PDFs, generate AI-powered learning materials (flashcards, quizzes, worksheets), and share them with students. Students access materials, use the AI chatbot for questions, and track their learning history.
+
+**Tech Stack:** Next.js 15 + Vercel Postgres (Neon) + Vercel Blob + NextAuth + Gemini AI + DaisyUI
 
 ---
 
-## Phase 1: Database & Environment Setup ✅
+## ✅ Already Built (Current Demo)
+- [x] Dark theme with DaisyUI
+- [x] Landing page (needs expansion)
+- [x] Library page with tabs (Chatbot, Flashcards, Worksheets, Chat History)
+- [x] Chatbot functionality with Gemini
+- [x] Flashcard generation from PDFs
+- [x] Worksheet generation
+- [x] Chat history tracking
+- [x] Basic PDF processing
+- [x] Prisma schema setup
 
-- [x] Initialize Prisma with PostgreSQL schema
-- [x] Set up project structure with organized folders
-- [x] Install core dependencies
-- [ ] Set up Vercel project
-- [ ] Create Vercel Postgres database
-- [ ] Add environment variables to `.env.local`
-- [ ] Run Prisma migrations (`npx prisma migrate dev`)
-- [ ] Generate Prisma Client (`npx prisma generate`)
-- [ ] Test database connection
+---
 
-**Environment Variables Needed:**
-```
-DATABASE_URL="postgres://..."
-POSTGRES_PRISMA_URL="postgres://..."
-POSTGRES_URL_NON_POOLING="postgres://..."
+## 🚀 MVP Development Phases
+
+### Phase 1: Database Schema & Infrastructure (Week 1) ✅
+**Goal:** Production-ready database with class management
+
+- [x] **Update Prisma Schema**
+  - [x] Add `Class` model (teacher-owned)
+  - [x] Add `ClassMembership` model (student enrollments)
+  - [x] Add `ClassMaterial` model (link materials to classes)
+  - [x] Add `InviteCode` model (class invite system)
+  - [x] Update `User` model with proper relationships
+  - [x] Update `PDF` model with class associations
+  - [x] Update `ChatConversation` with classId/materialId context
+  - [x] Add `ChatMessage` model for structured messages
+  - [x] Add indexes for performance (especially chat insights queries)
+
+- [x] **Vercel Setup**
+  - [x] Create Vercel project
+  - [x] Set up Vercel Postgres (Neon)
+  - [x] Set up Vercel Blob storage
+  - [x] Configure environment variables (.env.local + .env)
+  - [x] Run initial migrations (prisma db push)
+  - [x] Test database connection
+  - [x] Verify Prisma Client generation
+
+**Environment Variables (Completed):**
+```bash
+# Database (auto-added by Vercel Postgres)
+DATABASE_URL="postgresql://..."                 # Pooled connection
+DATABASE_URL_UNPOOLED="postgresql://..."        # Direct connection
+POSTGRES_PRISMA_URL="postgresql://..."          # Prisma-optimized
+# ... plus other Vercel Postgres vars
+
+# Storage (auto-added by Vercel Blob)
+BLOB_READ_WRITE_TOKEN="<token>"
+
+# Auth (needs manual setup in Phase 2)
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
-GEMINI_API_KEY="your-existing-gemini-key"
-BLOB_READ_WRITE_TOKEN="vercel-blob-token"
+NEXTAUTH_SECRET="<generate with: openssl rand -base64 32>"
+
+# AI (existing)
+GEMINI_API_KEY="<your-key>"
 ```
 
----
-
-## Phase 2: Authentication Infrastructure 🔨
-
-### 2.1 NextAuth.js Configuration
-- [ ] Create `lib/auth.ts` with NextAuth config
-- [ ] Set up credentials provider
-- [ ] Configure Prisma adapter
-- [ ] Add password hashing utilities (bcryptjs)
-- [ ] Create auth middleware for route protection
-- [ ] Add role-based access control (RBAC)
-
-### 2.2 Authentication Pages
-- [ ] Create login page (`app/(auth)/login/page.tsx`)
-- [ ] Create signup page (`app/(auth)/signup/page.tsx`)
-- [ ] Add role selection during signup (Teacher/Student)
-- [ ] Create auth server actions (`app/actions/auth.ts`)
-- [ ] Add form validation with Zod
-- [ ] Style with Tailwind + DaisyUI
+**Implementation Notes:**
+- Prisma schema uses `DATABASE_URL` and `DATABASE_URL_UNPOOLED`
+- `.env` file created (Prisma prefers this over `.env.local`)
+- All 11 models created with proper relations and indexes
+- Chat conversations now track class and material context for teacher insights
 
 ---
 
-## Phase 3: PDF Processing Pipeline 🔨
+### Phase 2: Authentication System (Week 1)
+**Goal:** Secure auth with teacher/student roles
 
-### 3.1 Vercel Blob Storage Setup
-- [ ] Create `lib/blob.ts` with Vercel Blob helpers
-- [ ] Test file upload to Blob storage
-- [ ] Create file size validation (max 25MB)
-- [ ] Add file type validation (PDF only)
+- [ ] **NextAuth.js Setup**
+  - [ ] Create `lib/auth.ts` with NextAuth config
+  - [ ] Set up Credentials provider
+  - [ ] Add Prisma adapter
+  - [ ] Implement password hashing (bcryptjs)
+  - [ ] Add JWT with role claims
+  - [ ] Create auth utilities
 
-### 3.2 PDF Text Extraction
-- [ ] Create `lib/processors/pdf-processor.ts`
-- [ ] Implement PDF text extraction using `pdf-parse`
-- [ ] Add error handling for corrupted PDFs
-- [ ] Test with sample PDFs from old project
+- [ ] **Auth Pages**
+  - [ ] Login page (`app/(auth)/login/page.tsx`)
+  - [ ] Signup page with role selection (`app/(auth)/signup/page.tsx`)
+  - [ ] Server actions (`app/actions/auth.ts`)
+  - [ ] Form validation with Zod
+  - [ ] Error handling & loading states
 
-### 3.3 Server Actions
-- [ ] Create `app/actions/pdf.ts`
-- [ ] Implement `uploadPDF` server action
-  - Upload to Blob storage
-  - Save PDF record to database
-  - Trigger processing
-- [ ] Implement `processPDF` server action
-  - Extract text from PDF
-  - Save to ProcessedContent table
-  - Return extracted text
-- [ ] Add loading states and error handling
+- [ ] **Route Protection**
+  - [ ] Create `middleware.ts`
+  - [ ] Protect teacher routes (`/teacher/*`)
+  - [ ] Protect student routes (`/student/*`)
+  - [ ] Allow public routes (`/`, `/login`, `/signup`)
 
 ---
 
-## Phase 4: AI Quiz Generation 🔨
+### Phase 3: Class Management System (Week 1-2)
+**Goal:** Teachers can create and manage classes
 
-### 4.1 Gemini Integration
-- [ ] Create `lib/processors/ai-generator.ts`
-- [ ] Port `generateQuiz` function from Django (views.py:283-405)
-- [ ] Port `generateFlashcards` function (views.py:167-280)
-- [ ] Port `generateSummary` function (views.py:48-100)
-- [ ] Port `generateKeypoints` function (views.py:103-164)
-- [ ] Use `@google/generative-ai` package
-- [ ] Add retry logic for API failures
+- [ ] **Class Creation & Management**
+  - [ ] Server actions (`app/actions/class.ts`)
+    - [ ] `createClass(name, description)`
+    - [ ] `updateClass(classId, data)`
+    - [ ] `deleteClass(classId)`
+    - [ ] `getTeacherClasses()`
+    - [ ] `getClassDetails(classId)`
 
-### 4.2 Quiz Server Actions
-- [ ] Create `app/actions/quiz.ts`
-- [ ] Implement `generateQuizFromPDF` server action
-  - Process PDF
-  - Call Gemini API
-  - Parse JSON response
-  - Save Quiz to database
-- [ ] Add validation for quiz JSON structure
-- [ ] Handle edge cases (empty PDFs, API errors)
+- [ ] **Invite System**
+  - [ ] Generate unique 6-char invite codes
+  - [ ] `generateInviteCode(classId, expiresIn?)`
+  - [ ] `revokeInviteCode(codeId)`
+  - [ ] `validateInviteCode(code)`
+  - [ ] QR code generation for invite links
 
----
-
-## Phase 5: Game Management 🔨
-
-### 5.1 Share Code & QR Code Generation
-- [ ] Create `lib/utils/share-code.ts`
-- [ ] Implement unique 6-character code generation
-- [ ] Add collision detection/retry logic
-- [ ] Create `lib/utils/qr-code.ts`
-- [ ] Implement QR code generation using `qrcode` package
-- [ ] Upload QR codes to Vercel Blob storage
-
-### 5.2 Game Server Actions
-- [ ] Create `app/actions/game.ts`
-- [ ] Implement `createGame` server action
-  - Generate share code
-  - Generate QR code
-  - Create Game record
-  - Return game link + QR URL
-- [ ] Implement `toggleGameActive` (enable/disable)
-- [ ] Implement `getGameDetails`
-- [ ] Implement `getGameResults` (for teacher analytics)
+- [ ] **Teacher UI**
+  - [ ] Classes dashboard (`app/(teacher)/classes/page.tsx`)
+  - [ ] Create class modal/form
+  - [ ] Class details page (`app/(teacher)/classes/[classId]/page.tsx`)
+  - [ ] Invite code management UI
+  - [ ] Student roster view
+  - [ ] Student chat history viewer (`app/(teacher)/classes/[classId]/insights/page.tsx`)
+  - [ ] Class settings page
 
 ---
 
-## Phase 6: Teacher Dashboard 🔨
+### Phase 4: Student Enrollment & Management (Week 2)
+**Goal:** Students can join classes and view materials
 
-### 6.1 Upload Interface
-- [ ] Create teacher layout (`app/(teacher)/layout.tsx`)
-- [ ] Build upload page (`app/(teacher)/upload/page.tsx`)
-- [ ] Reuse `FileUpload` component from old frontend
-- [ ] Add drag-and-drop support
-- [ ] Show upload progress
-- [ ] Display processing status
-- [ ] Auto-redirect to game creation after processing
+- [ ] **Student Join Flow**
+  - [ ] Public join page (`app/join/[inviteCode]/page.tsx`)
+  - [ ] Server action: `joinClass(inviteCode)`
+  - [ ] Handle logged-in vs guest users
+  - [ ] Confirmation page after joining
 
-### 6.2 Dashboard
-- [ ] Create dashboard page (`app/(teacher)/dashboard/page.tsx`)
-- [ ] Display uploaded PDFs list
-- [ ] Show generated games list
-- [ ] Add quick actions (create game, view results)
-- [ ] Add search/filter functionality
+- [ ] **Student Actions**
+  - [ ] `getStudentClasses()` - list enrolled classes
+  - [ ] `leaveClass(classId)` - optional
+  - [ ] `getClassMaterials(classId)` - view materials
 
-### 6.3 Game Management
-- [ ] Create games list page (`app/(teacher)/games/page.tsx`)
-- [ ] Create game details page (`app/(teacher)/games/[gameId]/page.tsx`)
-- [ ] Display share code and QR code
-- [ ] Show live student participation
-- [ ] Display results/analytics
-- [ ] Add export results functionality
+- [ ] **Student UI**
+  - [ ] Student dashboard (`app/(student)/dashboard/page.tsx`)
+  - [ ] My classes list
+  - [ ] Class materials view (`app/(student)/classes/[classId]/page.tsx`)
+  - [ ] Material viewer (PDFs, flashcards, etc.)
 
 ---
 
-## Phase 7: Student Experience 🔨
+### Phase 5: Material Sharing System (Week 2)
+**Goal:** Teachers share materials with specific classes
 
-### 7.1 Game Join Flow
-- [ ] Create public game page (`app/play/[shareCode]/page.tsx`)
-- [ ] Handle anonymous access (logged in or guest)
-- [ ] Display game title and description
-- [ ] Show "Start Game" button
-- [ ] Add time limit countdown if applicable
+- [ ] **Material-Class Linking**
+  - [ ] Server actions (`app/actions/materials.ts`)
+    - [ ] `shareMaterialWithClass(materialId, classId)`
+    - [ ] `unshareMaterial(materialId, classId)`
+    - [ ] `getMaterialsForClass(classId)`
+    - [ ] `getSharedClasses(materialId)`
 
-### 7.2 Quiz Player
-- [ ] Create quiz playing interface
-- [ ] Display questions one at a time
-- [ ] Track answers in state
-- [ ] Add progress indicator
-- [ ] Implement timer if game has time limit
-- [ ] Submit answers to server
+- [ ] **Material Management UI**
+  - [ ] Update library page to show "Share with Class" option
+  - [ ] Class selector modal
+  - [ ] Bulk share functionality
+  - [ ] Material visibility indicators (which classes have access)
 
-### 7.3 Results & History
-- [ ] Create student dashboard (`app/(student)/dashboard/page.tsx`)
-- [ ] Display completed games
-- [ ] Show scores and feedback
-- [ ] Create history page (`app/(student)/history/page.tsx`)
-- [ ] Allow reviewing past attempts
+- [ ] **Student Material Access**
+  - [ ] Filter materials by student's enrolled classes
+  - [ ] Material detail pages with proper access control
+  - [ ] Activity tracking (views, interactions)
 
 ---
 
-## Phase 8: UI Components 🔨
+### Phase 6: Enhanced Library & Material Generation (Week 2-3)
+**Goal:** Improve existing features for production use
 
-### 8.1 Shared Components
-- [ ] Create `components/shared/LoadingSpinner.tsx`
-- [ ] Create `components/shared/ErrorMessage.tsx`
-- [ ] Create `components/shared/Button.tsx`
-- [ ] Create `components/shared/Card.tsx`
-- [ ] Create `components/shared/Modal.tsx`
+- [ ] **PDF Upload & Processing**
+  - [ ] Move upload to teacher-only route
+  - [ ] Upload to Vercel Blob
+  - [ ] Link PDFs to classes during upload
+  - [ ] Improve error handling
+  - [ ] Add upload progress UI
+  - [ ] File size & type validation (max 25MB)
 
-### 8.2 Teacher Components
-- [ ] Create `components/teacher/PDFCard.tsx`
-- [ ] Create `components/teacher/GameCard.tsx`
-- [ ] Create `components/teacher/QRCodeDisplay.tsx`
-- [ ] Create `components/teacher/AnalyticsDashboard.tsx`
+- [ ] **AI Generation Improvements**
+  - [ ] Refactor generation code for reusability
+  - [ ] Add loading states
+  - [ ] Add retry logic for API failures
+  - [ ] Save generation settings/preferences
+  - [ ] Add generation history
 
-### 8.3 Student Components
-- [ ] Create `components/student/QuizQuestion.tsx`
-- [ ] Create `components/student/QuizResults.tsx`
-- [ ] Create `components/student/GameHistory.tsx`
-
----
-
-## Phase 9: API Routes 🔨
-
-### 9.1 Authentication API
-- [ ] Create `/api/auth/[...nextauth]/route.ts`
-- [ ] Handle NextAuth callbacks
-
-### 9.2 Game APIs
-- [ ] Create `/api/game/[gameId]/join/route.ts`
-- [ ] Create `/api/game/[gameId]/submit/route.ts`
-- [ ] Create `/api/game/[gameId]/results/route.ts`
+- [ ] **Library Page Updates**
+  - [ ] Make teacher-specific
+  - [ ] Add class filter dropdown
+  - [ ] Improve material cards (show class associations)
+  - [ ] Add search & filter functionality
+  - [ ] Add bulk actions (delete, share, etc.)
 
 ---
 
-## Phase 10: Middleware & Protection 🔨
+### Phase 7: Student Learning Experience (Week 3)
+**Goal:** Engaging student interface for using materials
 
-- [ ] Create `middleware.ts`
-- [ ] Add authentication checks
-- [ ] Implement role-based route protection
-  - Teacher routes: `/teacher/*`
-  - Student routes: `/student/*`
-  - Public routes: `/play/*`, `/login`, `/signup`
-- [ ] Add redirect logic
+- [ ] **Material Viewers**
+  - [ ] Flashcard player component (interactive)
+  - [ ] Worksheet viewer/printer
+  - [ ] PDF viewer (in-app)
+  - [ ] Quiz player (future enhancement)
 
----
+- [ ] **Chatbot Enhancement**
+  - [ ] Context-aware chatbot (material-specific)
+  - [ ] Save chat conversations with class/material associations
+  - [ ] Teacher dashboard to view all student chat histories
+  - [ ] Filter chats by class, student, or material
+  - [ ] Identify common student questions/struggles
 
-## Phase 11: Testing & Validation 🧪
-
-### 11.1 Manual Testing
-- [ ] Test teacher signup/login
-- [ ] Test student signup/login
-- [ ] Test PDF upload (small, large, invalid files)
-- [ ] Test quiz generation
-- [ ] Test game creation and sharing
-- [ ] Test student joining game via share code
-- [ ] Test quiz playing and submission
-- [ ] Test results tracking
-
-### 11.2 Edge Cases
-- [ ] Handle corrupted PDFs
-- [ ] Handle Gemini API rate limits
-- [ ] Handle duplicate share codes
-- [ ] Handle network failures
-- [ ] Test with 100 concurrent users
+- [ ] **Student History & Progress**
+  - [ ] Chat history page (already built, needs styling)
+  - [ ] Materials history (what they've viewed)
+  - [ ] Activity tracking
+  - [ ] Simple progress indicators
 
 ---
 
-## Phase 12: Deployment 🚀
+### Phase 8: UI/UX Polish (Week 3)
+**Goal:** Production-quality interface
 
-### 12.1 Vercel Deployment
-- [ ] Push code to GitHub
-- [ ] Connect GitHub repo to Vercel
-- [ ] Configure environment variables
-- [ ] Set up Vercel Postgres
-- [ ] Set up Vercel Blob storage
-- [ ] Run Prisma migrations in production
-- [ ] Test production deployment
+- [ ] **Design System**
+  - [ ] Finalize DaisyUI theme
+  - [ ] Add light/dark mode toggle
+  - [ ] Remove purple/red colors (per notes)
+  - [ ] Create consistent component library
+  - [ ] Add loading skeletons
+  - [ ] Improve error states
 
-### 12.2 Post-Deployment
-- [ ] Test all flows in production
-- [ ] Set up monitoring/logging
-- [ ] Configure custom domain (optional)
-- [ ] Set up analytics (Vercel Analytics)
+- [ ] **Landing Page**
+  - [ ] Hero section
+  - [ ] Features showcase
+  - [ ] How it works section
+  - [ ] Pricing/plans (if applicable)
+  - [ ] Teacher vs Student CTAs
+  - [ ] Demo video/screenshots
 
----
+- [ ] **Responsive Design**
+  - [ ] Mobile-first approach
+  - [ ] Tablet optimization
+  - [ ] Desktop layouts
+  - [ ] Test on multiple devices
 
-## Phase 13: Future Enhancements 🚀
-
-### Stretch Goals
-- [ ] Add flashcards generation
-- [ ] Add summary generation
-- [ ] Add keypoints generation
-- [ ] Implement real-time game updates (WebSockets)
-- [ ] Add leaderboards
-- [ ] Add teacher comments on student performance
-- [ ] Add PDF annotation/highlighting
-- [ ] Support multiple file formats (DOCX, TXT)
-- [ ] Add email notifications
-- [ ] Add mobile app (React Native)
+- [ ] **Fixes from Notes**
+  - [ ] Fix white scroll thing
+  - [ ] Remove purple colors
+  - [ ] Remove red colors
+  - [ ] Add light mode toggle
 
 ---
 
-## Migration Checklist
+### Phase 9: Production Readiness (Week 3-4)
+**Goal:** Security, performance, and reliability
 
-### Data Migration (if needed)
-- [ ] Export any existing data from Django/Supabase
-- [ ] Transform data to new schema
-- [ ] Import into Vercel Postgres
+- [ ] **Security**
+  - [ ] Add rate limiting (Vercel Edge Config or Upstash)
+  - [ ] Implement CSRF protection
+  - [ ] Add input sanitization
+  - [ ] Secure blob storage URLs (signed URLs)
+  - [ ] Add role-based authorization checks everywhere
 
-### Code Migration
-- [x] Extract PDF processing logic from `backend-wordwyrm/django_backend/api/views.py:12-45`
-- [ ] Port to `lib/processors/pdf-processor.ts`
-- [x] Extract AI generation logic from `backend-wordwyrm/django_backend/api/views.py:48-405`
-- [ ] Port to `lib/processors/ai-generator.ts`
-- [ ] Reuse frontend components from `wordwyrm-frontend/src/components/`
-- [ ] Adapt to new server actions architecture
+- [ ] **Performance**
+  - [ ] Optimize database queries (add indexes)
+  - [ ] Implement caching strategy
+  - [ ] Optimize images (Next.js Image)
+  - [ ] Code splitting
+  - [ ] Monitor bundle size
 
----
+- [ ] **Error Handling**
+  - [ ] Global error boundary
+  - [ ] Graceful API failure handling
+  - [ ] User-friendly error messages
+  - [ ] Error logging (Sentry or Vercel)
 
-## Current Priorities
-
-**Week 1:**
-1. Set up Vercel project & database
-2. Complete authentication (Phase 2)
-3. Set up PDF processing (Phase 3)
-
-**Week 2:**
-4. Implement quiz generation (Phase 4)
-5. Build teacher upload interface (Phase 6.1)
-6. Implement game management (Phase 5)
-
-**Week 3:**
-7. Build student game experience (Phase 7)
-8. Complete UI components (Phase 8)
-9. Testing & bug fixes (Phase 11)
-
-**Week 4:**
-10. Deploy to Vercel (Phase 12)
-11. User testing
-12. Launch! 🎉
+- [ ] **Data Management**
+  - [ ] Soft delete for important records
+  - [ ] Data retention policies
+  - [ ] Backup strategy
+  - [ ] Migration rollback plan
 
 ---
 
-## Notes
+### Phase 10: Testing & Quality Assurance (Week 4)
+**Goal:** Stable, bug-free MVP
 
-- Keep the architecture modular - easy to add new AI features later
-- Focus on teacher MVP first (upload → quiz → share)
-- Student experience can be simpler initially
-- Use Server Actions for most operations (simpler than API routes)
-- Leverage Vercel's edge network for fast global performance
-- Monitor Gemini API costs and add rate limiting if needed
+- [ ] **Functional Testing**
+  - [ ] Teacher flow: signup → create class → upload PDF → generate materials → share
+  - [ ] Student flow: signup → join class → view materials → use chatbot
+  - [ ] Invite code flow: generate → share → join → verify
+  - [ ] Auth flow: login, logout, role-based access
+  - [ ] Edge cases: expired invites, deleted classes, unauthorized access
+
+- [ ] **Browser Testing**
+  - [ ] Chrome/Edge
+  - [ ] Firefox
+  - [ ] Safari (desktop & mobile)
+  - [ ] Mobile browsers (iOS Safari, Chrome)
+
+- [ ] **Performance Testing**
+  - [ ] Page load times
+  - [ ] Large PDF processing
+  - [ ] Multiple concurrent users
+  - [ ] Blob storage upload/download speeds
 
 ---
 
-**Last Updated:** October 15, 2025
+### Phase 11: Deployment & Launch (Week 4)
+**Goal:** Live production app
+
+- [ ] **Pre-Deployment**
+  - [ ] Set up production environment variables
+  - [ ] Configure custom domain (if ready)
+  - [ ] Set up Vercel Analytics
+  - [ ] Set up error monitoring (Sentry)
+  - [ ] Create deployment checklist
+
+- [ ] **Deployment**
+  - [ ] Deploy to Vercel production
+  - [ ] Run database migrations
+  - [ ] Verify all integrations work
+  - [ ] Test critical paths in production
+
+- [ ] **Post-Deployment**
+  - [ ] Monitor error rates
+  - [ ] Check performance metrics
+  - [ ] Set up alerts for critical issues
+  - [ ] Create user documentation (optional)
+
+- [ ] **Launch Prep**
+  - [ ] Prepare marketing materials
+  - [ ] Set up user feedback channels
+  - [ ] Plan beta testing (if applicable)
+  - [ ] Create onboarding flow
+
+---
+
+## 📋 MVP Feature Scope (Keep Focused!)
+
+### ✅ In Scope (MVP)
+- Teacher creates classes
+- Teacher uploads PDFs
+- Teacher generates flashcards, worksheets, summaries
+- Teacher shares materials with classes
+- Teacher generates & shares invite codes/QR codes
+- **Teacher views student chat histories (insights into student questions)**
+- Student joins classes via invite code
+- Student views shared materials
+- Student uses AI chatbot for questions
+- Student views their own chat history
+- Basic analytics (view counts, chat activity)
+- Dark/light mode
+
+### ❌ Out of Scope (Post-MVP)
+- Quizzes with auto-grading
+- Real-time collaboration
+- Assignment submissions
+- Grading system
+- Advanced analytics/reporting
+- Mobile app
+- Parent accounts
+- LMS integrations
+- Email notifications
+- Payment/subscription system (unless needed)
+
+---
+
+## 🗓️ Timeline Summary
+
+**Week 1:** ✅ Database (DONE), Auth (NEXT), Class Creation
+**Week 2:** Student Enrollment, Material Sharing
+**Week 3:** UI Polish, Student Experience, Testing
+**Week 4:** Final Testing, Deployment, Launch
+
+**Total:** ~4 weeks to production-ready MVP
+**Current Status:** Phase 1 Complete ✅ | Starting Phase 2 (Auth)
+
+---
+
+## 🎯 Success Metrics (Define Later)
+
+- Teachers can create a class and invite students in < 2 minutes
+- Students can join a class in < 30 seconds
+- PDF processing completes in < 30 seconds
+- Chatbot responds in < 3 seconds
+- 99.9% uptime
+- Zero critical security issues
+
+---
+
+## 📝 Notes & Principles
+
+- **Ship fast, iterate faster** - Don't over-engineer
+- **Teacher experience first** - They're the paying customers
+- **Mobile-friendly** - Many students use phones
+- **Reliable AI** - Handle API failures gracefully
+- **Clear pricing** - Decide on free vs paid tiers early
+- **Data privacy** - Be FERPA/COPPA compliant if targeting schools
+
+---
+
+**Last Updated:** October 29, 2025
+**Status:** Phase 1 Complete ✅ | Phase 2 In Progress (Authentication)

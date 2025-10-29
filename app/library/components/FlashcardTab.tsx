@@ -327,7 +327,7 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
                   {/* Back */}
                   <div
-                    className="absolute w-full h-full bg-primary rounded-xl sm:rounded-2xl shadow-2xl border-2 sm:border-4 border-primary flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto"
+                    className="absolute w-full h-full bg-base-200 rounded-xl sm:rounded-2xl shadow-2xl border-2 sm:border-4 border-primary flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto"
                     style={{
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
@@ -335,13 +335,13 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
                     }}
                   >
                     <div className="text-center">
-                      <p className="text-xs sm:text-sm text-primary-content/80 uppercase font-bold mb-2 sm:mb-4">
+                      <p className="text-xs sm:text-sm text-primary uppercase font-bold mb-2 sm:mb-4">
                         {filteredCards[currentCard].category}
                       </p>
-                      <div className="text-sm sm:text-base md:text-lg text-primary-content whitespace-pre-wrap leading-relaxed">
+                      <div className="text-sm sm:text-base md:text-lg text-base-content whitespace-pre-wrap leading-relaxed">
                         {filteredCards[currentCard].back}
                       </div>
-                      <p className="text-xs sm:text-sm text-primary-content/70 mt-4 sm:mt-8">Click to flip back</p>
+                      <p className="text-xs sm:text-sm text-base-content/50 mt-4 sm:mt-8">Click to flip back</p>
                     </div>
                   </div>
                 </div>

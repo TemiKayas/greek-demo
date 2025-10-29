@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { chatWithPDF } from '@/app/actions/chat';
+import { saveChatConversation } from '@/app/actions/chatHistory';
 
 type Props = {
   pdfId: string;
@@ -19,6 +20,7 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -43,7 +45,15 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
 
       if (result.success) {
         // Add assistant response
-        setMessages([...newMessages, { role: 'assistant', content: result.response }]);
+        const updatedMessages = [...newMessages, { role: 'assistant' as const, content: result.response }];
+        setMessages(updatedMessages);
+
+        // Auto-save conversation after successful exchange
+        const saveResult = await saveChatConversation(pdfId, updatedMessages, currentConversationId || undefined);
+        if (saveResult.success && !currentConversationId) {
+          // Store the conversation ID for future updates
+          setCurrentConversationId(saveResult.data.id);
+        }
       } else {
         // Show error message
         setMessages([
@@ -210,7 +220,7 @@ export default function ChatbotTab({ pdfId, extractedText }: Props) {
               </button>
             </div>
             <p className="text-xs text-base-content/60 mt-2">
-              Press Enter to send • The AI will reference the PDF content in its answers
+              Press Enter to send • Conversations are automatically saved to history
             </p>
           </>
         )}
