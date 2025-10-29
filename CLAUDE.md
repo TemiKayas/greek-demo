@@ -970,10 +970,69 @@ vercel logs                          # View logs
 ---
 
 **Last Updated:** October 29, 2025
-**Version:** 2.2 - Phase 1-2 Complete
-**Status:** ✅ Database Ready | ✅ Auth Ready | Starting Phase 3 (Class Management)
+**Version:** 2.4 - Phase 1-4 Complete
+**Status:** ✅ Database | ✅ Auth | ✅ Class Management | ✅ Student Enrollment | Phase 5 Next (Material Sharing)
 
 ## Changelog
+
+**v2.4 (October 29, 2025)** - Phase 4 Complete (Student Enrollment & Management)
+- ✅ **Student Server Actions** (`app/actions/class.ts`)
+  - getStudentClasses() - List all enrolled classes with teacher/material counts
+  - getClassMaterials(classId) - View materials shared with a class (students + teachers)
+  - leaveClass(classId) - Optional leave functionality for students
+- ✅ **Student Dashboard** (`app/(student)/dashboard/page.tsx`)
+  - Grid view of enrolled classes
+  - Teacher info, student count, and materials count per class
+  - Empty state with invite code instructions
+  - Links to view materials for each class
+- ✅ **Class Materials View** (`app/(student)/classes/[classId]/materials/page.tsx`)
+  - Filter materials by type (All, Flashcards, Worksheets, Summaries)
+  - Material cards with icons and type-specific colors
+  - Links to material viewers (flashcards, worksheets, chatbot)
+  - Shows shared date and source PDF filename
+- ✅ **Integration with Existing Library**
+  - Materials link to existing library page with query params
+  - Reuses existing flashcard/worksheet/chatbot components
+  - Consistent UI across teacher and student experiences
+
+**v2.3 (October 29, 2025)** - Phase 3 Complete (Class Management System)
+- ✅ **Invite Code Utilities**
+  - lib/utils/invite-code.ts - Generate unique 6-char codes (no ambiguous chars)
+  - validateInviteCode() - Check validity, expiration, and class info
+  - generateUniqueInviteCode() - Collision handling with retry logic
+- ✅ **QR Code Generation**
+  - lib/utils/qr-code.ts - Generate QR codes for invite links
+  - Returns data URL for immediate display (no Blob storage needed)
+  - Used in teacher UI for easy code sharing
+- ✅ **Class Server Actions** (`app/actions/class.ts`)
+  - createClass() - Create class with auto-generated invite code
+  - updateClass() - Update class name/description/status
+  - deleteClass() - Delete with cascade (removes memberships, materials)
+  - getTeacherClasses() - List all teacher's classes with counts
+  - getClassDetails() - Get class with students, invite codes, stats
+  - generateNewInviteCode() - Create additional codes with optional expiration
+  - revokeInviteCode() - Deactivate codes
+  - joinClassWithCode() - Student enrollment with validation
+- ✅ **Teacher UI - Classes Dashboard** (`app/(teacher)/classes/page.tsx`)
+  - Grid view of all classes
+  - Create class modal with name/description form
+  - Student and material counts per class
+  - Quick access to invite codes with QR
+  - Empty state with CTA to create first class
+- ✅ **Teacher UI - Class Details** (`app/(teacher)/classes/[classId]/page.tsx`)
+  - Two tabs: Students and Invite Codes
+  - Student roster table with join dates and activity links
+  - Invite codes list with usage count, expiration, and status
+  - Generate/revoke invite code functionality
+  - QR code modal for easy sharing
+  - Copy invite link to clipboard
+  - Delete class option with confirmation
+- ✅ **Public Join Page** (`app/join/[code]/page.tsx`)
+  - Validates invite code on load
+  - Shows class preview (name, description, teacher)
+  - One-click join for logged-in students
+  - Error states for invalid/expired codes
+  - Redirects to dashboard after successful join
 
 **v2.2 (October 29, 2025)** - Phase 2 Complete (Authentication)
 - ✅ **NextAuth.js v5 Implementation**
