@@ -412,6 +412,82 @@ export async function revokeInviteCode(codeId: string): Promise<ActionResult> {
 }
 
 /**
+ * Validate an invite code (public - can be called before authentication)
+ */
+export async function validateInviteCodeAction(code: string): Promise<ActionResult<{
+  code: string;
+  classId: string;
+  class: {
+    id: string;
+    name: string;
+    description: string | null;
+    teacherId: string;
+    teacher?: {
+      name: string;
+    };
+  };
+}>> {
+  try {
+    const inviteCode = await db.inviteCode.findUnique({
+      where: { code: code.toUpperCase() },
+      include: {
+        class: {
+          include: {
+            teacher: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!inviteCode) {
+      return {
+        success: false,
+        error: 'Invalid invite code',
+      };
+    }
+
+    if (!inviteCode.isActive) {
+      return {
+        success: false,
+        error: 'This invite code has been deactivated',
+      };
+    }
+
+    if (inviteCode.expiresAt && inviteCode.expiresAt < new Date()) {
+      return {
+        success: false,
+        error: 'This invite code has expired',
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        code: inviteCode.code,
+        classId: inviteCode.classId,
+        class: {
+          id: inviteCode.class.id,
+          name: inviteCode.class.name,
+          description: inviteCode.class.description,
+          teacherId: inviteCode.class.teacherId,
+          teacher: inviteCode.class.teacher,
+        },
+      },
+    };
+  } catch (error) {
+    console.error('Validate invite code error:', error);
+    return {
+      success: false,
+      error: 'Failed to validate invite code',
+    };
+  }
+}
+
+/**
  * Join a class using an invite code (students only)
  */
 export async function joinClassWithCode(code: string): Promise<ActionResult<{ classId: string }>> {

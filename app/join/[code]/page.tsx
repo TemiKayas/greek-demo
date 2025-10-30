@@ -3,25 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { joinClassWithCode } from '@/app/actions/class';
-import { validateInviteCode } from '@/lib/utils/invite-code';
+import { joinClassWithCode, validateInviteCodeAction } from '@/app/actions/class';
+
+type ClassData = {
+  id: string;
+  name: string;
+  description: string | null;
+  teacherId: string;
+  teacher?: {
+    name: string;
+  };
+};
 
 type InviteCodeValidation = {
   valid: boolean;
   error?: string;
-  inviteCode?: {
-    id: string;
-    code: string;
-    classId: string;
-    class: {
-      id: string;
-      name: string;
-      description: string | null;
-      teacher: {
-        name: string;
-      };
-    };
-  };
+  classData?: ClassData;
 };
 
 export default function JoinClassPage() {
@@ -42,8 +39,20 @@ export default function JoinClassPage() {
 
   async function validateCode() {
     setLoading(true);
-    const result = (await validateInviteCode(code)) as InviteCodeValidation;
-    setValidation(result);
+    const result = await validateInviteCodeAction(code);
+
+    if (result.success) {
+      setValidation({
+        valid: true,
+        classData: result.data.class,
+      });
+    } else {
+      setValidation({
+        valid: false,
+        error: result.error,
+      });
+    }
+
     setLoading(false);
   }
 
@@ -109,7 +118,7 @@ export default function JoinClassPage() {
     );
   }
 
-  const classData = validation.inviteCode!.class;
+  const classData = validation.classData!;
 
   return (
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
@@ -173,10 +182,12 @@ export default function JoinClassPage() {
                 </div>
               )}
 
-              <div>
-                <p className="text-sm text-base-content/60">Teacher</p>
-                <p className="text-sm">{classData.teacher.name}</p>
-              </div>
+              {classData.teacher && (
+                <div>
+                  <p className="text-sm text-base-content/60">Teacher</p>
+                  <p className="text-sm">{classData.teacher.name}</p>
+                </div>
+              )}
 
               <div>
                 <p className="text-sm text-base-content/60">Invite Code</p>
