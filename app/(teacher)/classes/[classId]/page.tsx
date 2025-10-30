@@ -9,6 +9,11 @@ import {
   revokeInviteCode,
   deleteClass,
 } from '@/app/actions/class';
+import {
+  getClassLessons,
+  createLesson,
+  shareLessonWithClass,
+} from '@/app/actions/lesson';
 import { generateInviteQRCode } from '@/lib/utils/qr-code';
 
 type ClassDetails = {
@@ -52,16 +57,21 @@ export default function ClassDetailsPage() {
   const classId = params?.classId as string;
 
   const [classData, setClassData] = useState<ClassDetails | null>(null);
+  const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'students' | 'codes'>('students');
+  const [activeTab, setActiveTab] = useState<'lessons' | 'students' | 'codes'>('lessons');
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [selectedCode, setSelectedCode] = useState<{ code: string; qr: string } | null>(null);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [showCreateLessonModal, setShowCreateLessonModal] = useState(false);
+  const [creatingLesson, setCreatingLesson] = useState(false);
+  const [createLessonError, setCreateLessonError] = useState<string | null>(null);
 
   useEffect(() => {
     if (classId) {
       loadClassDetails();
+      loadLessons();
     }
   }, [classId]);
 
@@ -74,6 +84,37 @@ export default function ClassDetailsPage() {
       setError(result.error);
     }
     setLoading(false);
+  }
+
+  async function loadLessons() {
+    const result = await getClassLessons(classId);
+    if (result.success) {
+      setLessons(result.data);
+    }
+  }
+
+  async function handleCreateLesson(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreateLessonError(null);
+    setCreatingLesson(true);
+
+    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+
+    // Create lesson first
+    const lessonResult = await createLesson(formData);
+
+    if (lessonResult.success) {
+      // Then share it with this class
+      await shareLessonWithClass(lessonResult.data.lessonId, classId);
+      setShowCreateLessonModal(false);
+      form.reset();
+      await loadLessons();
+    } else {
+      setCreateLessonError(lessonResult.error);
+    }
+
+    setCreatingLesson(false);
   }
 
   async function handleGenerateCode() {
@@ -206,6 +247,12 @@ export default function ClassDetailsPage() {
         {/* Tabs */}
         <div className="tabs tabs-boxed mb-6">
           <a
+            className={`tab ${activeTab === 'lessons' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('lessons')}
+          >
+            Lessons ({lessons.length})
+          </a>
+          <a
             className={`tab ${activeTab === 'students' ? 'tab-active' : ''}`}
             onClick={() => setActiveTab('students')}
           >
@@ -218,6 +265,76 @@ export default function ClassDetailsPage() {
             Invite Codes ({classData.inviteCodes.length})
           </a>
         </div>
+
+        {/* Lessons Tab */}
+        {activeTab === 'lessons' && (
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="card-title">Lessons</h2>
+                <button
+                  onClick={() => setShowCreateLessonModal(true)}
+                  className="btn btn-primary btn-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Create Lesson
+                </button>
+              </div>
+
+              {lessons.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-base-content/70 mb-4">
+                    No lessons created yet
+                  </p>
+                  <button
+                    onClick={() => setShowCreateLessonModal(true)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    Create Your First Lesson
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {lessons.map((lesson) => (
+                    <div key={lesson.id} className="card bg-base-200 shadow">
+                      <div className="card-body p-4">
+                        <h3 className="card-title text-base">{lesson.name}</h3>
+                        {lesson.description && (
+                          <p className="text-sm text-base-content/70 line-clamp-2">
+                            {lesson.description}
+                          </p>
+                        )}
+                        <div className="mt-3 space-y-1 text-xs text-base-content/60">
+                          <p>{lesson._count?.pdfs || 0} PDFs</p>
+                          <p>{lesson._count?.materials || 0} Materials</p>
+                        </div>
+                        <div className="card-actions justify-end mt-3">
+                          <Link
+                            href={`/classes/${classId}/lessons/${lesson.id}`}
+                            className="btn btn-primary btn-xs"
+                          >
+                            Open
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Students Tab */}
         {activeTab === 'students' && (
@@ -349,6 +466,74 @@ export default function ClassDetailsPage() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Create Lesson Modal */}
+        {showCreateLessonModal && (
+          <div className="modal modal-open">
+            <div className="modal-box">
+              <h3 className="font-bold text-lg mb-4">Create New Lesson</h3>
+
+              {createLessonError && (
+                <div className="alert alert-error mb-4">
+                  <span>{createLessonError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateLesson}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Lesson Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="e.g., Greek Alphabet Basics"
+                    className="input input-bordered"
+                    required
+                    disabled={creatingLesson}
+                  />
+                </div>
+
+                <div className="form-control mb-6">
+                  <label className="label">
+                    <span className="label-text">Description (optional)</span>
+                  </label>
+                  <textarea
+                    name="description"
+                    placeholder="What will students learn in this lesson?"
+                    className="textarea textarea-bordered h-24"
+                    disabled={creatingLesson}
+                  />
+                </div>
+
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateLessonModal(false);
+                      setCreateLessonError(null);
+                    }}
+                    className="btn"
+                    disabled={creatingLesson}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`btn btn-primary ${creatingLesson ? 'loading' : ''}`}
+                    disabled={creatingLesson}
+                  >
+                    {creatingLesson ? 'Creating...' : 'Create Lesson'}
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div
+              className="modal-backdrop"
+              onClick={() => !creatingLesson && setShowCreateLessonModal(false)}
+            ></div>
           </div>
         )}
 

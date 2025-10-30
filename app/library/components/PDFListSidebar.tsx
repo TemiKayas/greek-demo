@@ -3,7 +3,7 @@ type PDF = {
   filename: string;
   fileSize: number;
   uploadedAt: Date;
-  filePath: string;
+  blobUrl: string;
   processedContent: {
     extractedText: string;
   } | null;

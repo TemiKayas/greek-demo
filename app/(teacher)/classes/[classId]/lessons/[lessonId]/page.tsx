@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { getAllPDFs, deletePDF } from '@/app/actions/pdf';
-import PDFListSidebar from './components/PDFListSidebar';
-import ChatbotTab from './components/ChatbotTab';
-import WorksheetTab from './components/WorksheetTab';
-import FlashcardTab from './components/FlashcardTab';
-import ChatHistoryTab from './components/ChatHistoryTab';
 import Link from 'next/link';
+import { getLessonPDFs, deletePDF, uploadAndProcessPDF } from '@/app/actions/pdf';
+import { getClassLessons } from '@/app/actions/lesson';
+import PDFListSidebar from '@/app/library/components/PDFListSidebar';
+import ChatbotTab from '@/app/library/components/ChatbotTab';
+import WorksheetTab from '@/app/library/components/WorksheetTab';
+import FlashcardTab from '@/app/library/components/FlashcardTab';
+import ChatHistoryTab from '@/app/library/components/ChatHistoryTab';
 import ThemeToggle from '@/app/components/ThemeToggle';
 
 // Dynamically import PDFViewer to avoid SSR issues with react-pdf
-const PDFViewer = dynamic(() => import('./components/PDFViewer'), {
+const PDFViewer = dynamic(() => import('@/app/library/components/PDFViewer'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full">
@@ -32,21 +34,55 @@ type PDF = {
   } | null;
 };
 
+type Lesson = {
+  id: string;
+  name: string;
+  description: string | null;
+  creatorId: string;
+  _count?: {
+    pdfs: number;
+    materials: number;
+  };
+};
+
 type Tab = 'pdf' | 'chat' | 'worksheet' | 'flashcard' | 'history';
 
-export default function LibraryPage() {
+export default function LessonDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const classId = params?.classId as string;
+  const lessonId = params?.lessonId as string;
+
   const [pdfs, setPdfs] = useState<PDF[]>([]);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<PDF | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('pdf');
   const [isLoading, setIsLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPDFs();
-  }, []);
+    if (lessonId) {
+      loadLessonDetails();
+      loadPDFs();
+    }
+  }, [lessonId]);
+
+  async function loadLessonDetails() {
+    // Get lesson details from the class lessons
+    const result = await getClassLessons(classId);
+    if (result.success) {
+      const lessonData = result.data.find((lesson: any) => lesson.id === lessonId);
+      if (lessonData) {
+        setLesson(lessonData);
+      }
+    }
+  }
 
   async function loadPDFs() {
     setIsLoading(true);
-    const result = await getAllPDFs();
+    const result = await getLessonPDFs(lessonId);
     if (result.success && result.data) {
       setPdfs(result.data as PDF[]);
       // Auto-select most recent PDF
@@ -73,26 +109,70 @@ export default function LibraryPage() {
     }
   }
 
+  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUploadError(null);
+    setUploading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+
+    // Add lessonId to formData
+    formData.append('lessonId', lessonId);
+
+    const result = await uploadAndProcessPDF(formData);
+
+    if (result.success) {
+      setShowUploadModal(false);
+      form.reset();
+      await loadPDFs();
+      await loadLessonDetails(); // Refresh lesson to update PDF count
+    } else {
+      setUploadError(result.error);
+    }
+
+    setUploading(false);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
       <header className="bg-base-100 border-b border-base-content/10 shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 lg:px-8 py-3 lg:py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Link
+                href={`/classes/${classId}`}
+                className="btn btn-ghost btn-sm btn-circle"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
-              </div>
-              <div className="text-center sm:text-left">
-                <h1 className="text-xl sm:text-2xl font-bold text-base-content">Library</h1>
-                <p className="text-xs sm:text-sm text-base-content/70">Manage your Greek learning materials</p>
+              </Link>
+              <div className="flex-1">
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">
+                  {lesson?.name || 'Loading...'}
+                </h1>
+                <p className="text-xs sm:text-sm text-base-content/70">
+                  {lesson?.description || 'No description'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Link href="/" className="btn btn-outline btn-primary btn-sm sm:btn-md gap-2">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="btn btn-primary btn-sm sm:btn-md gap-2"
+              >
                 <svg
                   className="w-4 h-4 sm:w-5 sm:h-5"
                   fill="none"
@@ -103,11 +183,12 @@ export default function LibraryPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
-                <span className="hidden sm:inline">Home</span>
-              </Link>
+                <span className="hidden sm:inline">Upload PDF</span>
+              </button>
+              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -237,15 +318,79 @@ export default function LibraryPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                   </div>
-                  <p className="text-lg sm:text-xl text-base-content/60">
-                    {isLoading ? 'Loading PDFs...' : 'No PDFs available. Upload one to get started!'}
+                  <p className="text-lg sm:text-xl text-base-content/60 mb-4">
+                    {isLoading ? 'Loading PDFs...' : 'No PDFs uploaded yet'}
                   </p>
+                  {!isLoading && (
+                    <button
+                      onClick={() => setShowUploadModal(true)}
+                      className="btn btn-primary"
+                    >
+                      Upload Your First PDF
+                    </button>
+                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Upload PDF to Lesson</h3>
+
+            {uploadError && (
+              <div className="alert alert-error mb-4">
+                <span>{uploadError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpload}>
+              <div className="form-control mb-6">
+                <label className="label">
+                  <span className="label-text">Select PDF File</span>
+                </label>
+                <input
+                  type="file"
+                  name="pdf"
+                  accept=".pdf"
+                  className="file-input file-input-bordered"
+                  required
+                  disabled={uploading}
+                />
+                <label className="label">
+                  <span className="label-text-alt">Maximum file size: 25MB</span>
+                </label>
+              </div>
+
+              <div className="modal-action">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setUploadError(null);
+                  }}
+                  className="btn"
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`btn btn-primary ${uploading ? 'loading' : ''}`}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Uploading...' : 'Upload PDF'}
+                </button>
+              </div>
+            </form>
+          </div>
+          <div className="modal-backdrop" onClick={() => !uploading && setShowUploadModal(false)}></div>
+        </div>
+      )}
     </div>
   );
 }

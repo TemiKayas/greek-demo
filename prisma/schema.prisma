@@ -59,6 +59,7 @@ model Class {
   inviteCodes       InviteCode[]
   sharedMaterials   ClassMaterial[]
   chatConversations ChatConversation[]
+  lessons           LessonClass[]       // Lessons shared with this class
 
   @@index([teacherId])
   @@index([isActive])
@@ -98,12 +99,52 @@ model InviteCode {
 }
 
 // ============================================================================
+// LESSON MANAGEMENT (Reusable lessons)
+// ============================================================================
+
+model Lesson {
+  id          String   @id @default(cuid())
+  creatorId   String   // Teacher who created it
+  name        String
+  description String?
+  isPublic    Boolean  @default(false) // Future: allow sharing with other teachers
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classes  LessonClass[]     // Classes this lesson is shared with
+  pdfs     PDF[]             // PDFs uploaded for this lesson
+  materials Material[]        // Generated materials for this lesson
+
+  @@index([creatorId])
+  @@index([createdAt])
+}
+
+model LessonClass {
+  id        String   @id @default(cuid())
+  lessonId  String
+  classId   String
+  sharedAt  DateTime @default(now())
+  sharedBy  String   // Teacher user ID
+  order     Int      @default(0) // For ordering lessons within a class
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, classId])
+  @@index([classId, order]) // Get all lessons in order for a class
+  @@index([lessonId])
+}
+
+// ============================================================================
 // PDF & CONTENT PROCESSING
 // ============================================================================
 
 model PDF {
   id         String   @id @default(cuid())
   userId     String
+  lessonId   String?  // Optional: Lesson this PDF belongs to
   filename   String
   blobUrl    String   // Vercel Blob storage URL
   fileSize   Int
@@ -112,11 +153,13 @@ model PDF {
 
   // Relations
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson            Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   processedContent  ProcessedContent?
   materials         Material[]
   chatConversations ChatConversation[]
 
   @@index([userId])
+  @@index([lessonId])
 }
 
 model ProcessedContent {
@@ -144,6 +187,7 @@ enum MaterialType {
 model Material {
   id        String       @id @default(cuid())
   pdfId     String
+  lessonId  String?      // Optional: Lesson this material belongs to
   userId    String       // Teacher who generated it
   type      MaterialType
   title     String
@@ -152,10 +196,12 @@ model Material {
 
   // Relations
   pdf           PDF             @relation(fields: [pdfId], references: [id], onDelete: Cascade)
+  lesson        Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   sharedWith    ClassMaterial[]
   conversations ChatConversation[]
 
   @@index([pdfId])
+  @@index([lessonId])
   @@index([userId])
   @@index([type])
 }

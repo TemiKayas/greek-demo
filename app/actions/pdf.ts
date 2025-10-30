@@ -18,6 +18,9 @@ export async function uploadAndProcessPDF(
       return { success: false, error: 'No file provided' };
     }
 
+    // Get optional lessonId
+    const lessonId = formData.get('lessonId') as string | null;
+
     const validation = validatePDF(file);
     if (!validation.valid) {
       return { success: false, error: validation.error! };
@@ -46,6 +49,7 @@ export async function uploadAndProcessPDF(
         blobUrl: filePath, // Updated field name to match schema
         fileSize: file.size,
         mimeType: file.type,
+        lessonId: lessonId || null, // Link to lesson if provided
       },
     });
 
@@ -107,6 +111,64 @@ export async function getAllPDFs() {
   } catch (error) {
     console.error('Error fetching PDFs:', error);
     return { success: false, error: 'Failed to fetch PDFs' };
+  }
+}
+
+export async function getLessonPDFs(lessonId: string) {
+  try {
+    const { auth } = await import('@/lib/auth');
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Verify user has access to this lesson
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        classes: {
+          include: {
+            class: {
+              include: {
+                memberships: {
+                  where: { userId: session.user.id },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      return { success: false, error: 'Lesson not found' };
+    }
+
+    // Check if user is creator or has access through a class
+    const hasAccess =
+      lesson.creatorId === session.user.id ||
+      lesson.classes.some((lc) => lc.class.memberships.length > 0);
+
+    if (!hasAccess) {
+      return { success: false, error: 'Access denied' };
+    }
+
+    const pdfs = await db.pDF.findMany({
+      where: { lessonId },
+      include: {
+        processedContent: true,
+        materials: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
+    });
+
+    return { success: true, data: pdfs };
+  } catch (error) {
+    console.error('Error fetching lesson PDFs:', error);
+    return { success: false, error: 'Failed to fetch lesson PDFs' };
   }
 }
 

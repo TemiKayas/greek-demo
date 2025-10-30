@@ -17,6 +17,7 @@ export default auth((req) => {
 
   // Protected route patterns
   const isTeacherRoute = nextUrl.pathname.startsWith('/classes') ||
+                         nextUrl.pathname.startsWith('/lessons') ||
                          nextUrl.pathname.startsWith('/library');
   const isStudentRoute = nextUrl.pathname.startsWith('/dashboard') ||
                          nextUrl.pathname.startsWith('/history');

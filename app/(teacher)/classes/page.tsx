@@ -52,12 +52,13 @@ export default function ClassesPage() {
     setCreating(true);
 
     const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
 
     const result = await createClass(formData);
 
     if (result.success) {
       setShowCreateModal(false);
-      event.currentTarget.reset();
+      form.reset();
       await loadClasses();
     } else {
       setCreateError(result.error);
