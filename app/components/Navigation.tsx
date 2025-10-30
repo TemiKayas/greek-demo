@@ -67,6 +67,9 @@ export default function Navigation({ user }: Props) {
       <Link href="/" className="btn btn-ghost btn-sm">
         Home
       </Link>
+      <div className="hidden sm:flex items-center gap-2 text-sm text-base-content/70">
+        <span>Welcome, <span className="font-semibold text-base-content">{user.name || user.email}</span></span>
+      </div>
       <button
         onClick={handleSignOut}
         className={`btn btn-outline btn-sm ${isLoggingOut ? 'loading' : ''}`}

@@ -16,11 +16,15 @@ export default auth((req) => {
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
   // Protected route patterns
-  const isTeacherRoute = nextUrl.pathname.startsWith('/classes') ||
+  // Students can access /classes/[id]/materials/* but not other /classes routes
+  const isStudentClassMaterialsRoute = /^\/classes\/[^/]+\/materials/.test(nextUrl.pathname);
+
+  const isTeacherRoute = (nextUrl.pathname.startsWith('/classes') && !isStudentClassMaterialsRoute) ||
                          nextUrl.pathname.startsWith('/lessons') ||
                          nextUrl.pathname.startsWith('/library');
   const isStudentRoute = nextUrl.pathname.startsWith('/dashboard') ||
-                         nextUrl.pathname.startsWith('/history');
+                         nextUrl.pathname.startsWith('/history') ||
+                         isStudentClassMaterialsRoute;
 
   // If user is already logged in and tries to access auth pages, redirect to appropriate dashboard
   if (isLoggedIn && isAuthRoute) {
