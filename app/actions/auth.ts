@@ -3,7 +3,7 @@
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { signIn } from '@/lib/auth';
+import { signIn, signOut } from '@/lib/auth';
 import { AuthError } from 'next-auth';
 import type { UserRole } from '@prisma/client';
 
@@ -152,4 +152,20 @@ export async function getCurrentUser() {
   const { auth: getSession } = await import('@/lib/auth');
   const session = await getSession();
   return session?.user || null;
+}
+
+/**
+ * Log out the current user
+ */
+export async function logout(): Promise<ActionResult> {
+  try {
+    await signOut({ redirect: false });
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error('Logout error:', error);
+    return {
+      success: false,
+      error: 'An error occurred during logout',
+    };
+  }
 }

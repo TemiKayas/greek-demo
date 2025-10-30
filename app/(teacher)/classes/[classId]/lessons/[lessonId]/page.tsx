@@ -11,7 +11,6 @@ import ChatbotTab from '@/app/library/components/ChatbotTab';
 import WorksheetTab from '@/app/library/components/WorksheetTab';
 import FlashcardTab from '@/app/library/components/FlashcardTab';
 import ChatHistoryTab from '@/app/library/components/ChatHistoryTab';
-import ThemeToggle from '@/app/components/ThemeToggle';
 
 // Dynamically import PDFViewer to avoid SSR issues with react-pdf
 const PDFViewer = dynamic(() => import('@/app/library/components/PDFViewer'), {
@@ -169,6 +168,12 @@ export default function LessonDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Link href="/library" className="btn btn-ghost btn-sm sm:btn-md">
+                Library
+              </Link>
+              <Link href="/" className="btn btn-ghost btn-sm sm:btn-md">
+                Home
+              </Link>
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="btn btn-primary btn-sm sm:btn-md gap-2"
@@ -188,7 +193,6 @@ export default function LessonDetailPage() {
                 </svg>
                 <span className="hidden sm:inline">Upload PDF</span>
               </button>
-              <ThemeToggle />
             </div>
           </div>
         </div>

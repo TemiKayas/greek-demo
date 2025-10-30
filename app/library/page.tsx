@@ -9,7 +9,6 @@ import WorksheetTab from './components/WorksheetTab';
 import FlashcardTab from './components/FlashcardTab';
 import ChatHistoryTab from './components/ChatHistoryTab';
 import Link from 'next/link';
-import ThemeToggle from '@/app/components/ThemeToggle';
 
 // Dynamically import PDFViewer to avoid SSR issues with react-pdf
 const PDFViewer = dynamic(() => import('./components/PDFViewer'), {
@@ -91,7 +90,9 @@ export default function LibraryPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <ThemeToggle />
+              <Link href="/classes" className="btn btn-ghost btn-sm sm:btn-md">
+                Classes
+              </Link>
               <Link href="/" className="btn btn-outline btn-primary btn-sm sm:btn-md gap-2">
                 <svg
                   className="w-4 h-4 sm:w-5 sm:h-5"
