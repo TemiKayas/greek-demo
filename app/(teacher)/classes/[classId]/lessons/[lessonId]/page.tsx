@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getLessonPDFs, deletePDF, uploadAndProcessPDF } from '@/app/actions/pdf';
 import { getClassLessons } from '@/app/actions/lesson';
-import PDFListSidebar from '@/app/library/components/PDFListSidebar';
 import ChatbotTab from '@/app/library/components/ChatbotTab';
 import WorksheetTab from '@/app/library/components/WorksheetTab';
 import FlashcardTab from '@/app/library/components/FlashcardTab';
