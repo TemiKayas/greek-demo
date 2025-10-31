@@ -196,9 +196,14 @@ export default function ClassDetailsPage() {
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <Link href="/classes" className="btn btn-ghost btn-sm mb-2">
-              ← Back to Classes
-            </Link>
+            <div className="flex gap-2 mb-2">
+              <Link href="/classes" className="btn btn-ghost btn-sm">
+                ← Back to Classes
+              </Link>
+              <Link href="/" className="btn btn-ghost btn-sm">
+                Home
+              </Link>
+            </div>
             <h1 className="text-4xl font-bold">{classData.name}</h1>
             {classData.description && (
               <p className="text-base-content/70 mt-2">{classData.description}</p>

@@ -127,3 +127,141 @@ Now answer their question in a simple, friendly way! Keep it short and sweet. �
     };
   }
 }
+
+export async function chatWithLesson(
+  classId: string,
+  lessonId: string,
+  userMessage: string,
+  conversationHistory: Message[]
+): Promise<ChatResult> {
+  try {
+    // Get lesson with all its PDFs and processed content
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        pdfs: {
+          include: {
+            processedContent: true,
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      return { success: false, error: 'Lesson not found' };
+    }
+
+    // Verify this lesson is shared with the class
+    const lessonClass = await db.lessonClass.findUnique({
+      where: {
+        lessonId_classId: {
+          lessonId,
+          classId,
+        },
+      },
+    });
+
+    if (!lessonClass) {
+      return { success: false, error: 'Lesson not available for this class' };
+    }
+
+    // Combine all PDF content
+    const pdfContents = lesson.pdfs
+      .filter(pdf => pdf.processedContent)
+      .map(pdf => `[From: ${pdf.filename}]\n${pdf.processedContent!.extractedText}`)
+      .join('\n\n---\n\n');
+
+    if (!pdfContents) {
+      return {
+        success: false,
+        error: 'No processed materials found for this lesson',
+      };
+    }
+
+    // Check if question is related to the lesson content
+    const questionWords = userMessage.toLowerCase().split(/\s+/);
+    const contentWords = pdfContents.toLowerCase().split(/\s+/);
+
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'what', 'how', 'why', 'when', 'where', 'who']);
+    const relevantQuestionWords = questionWords.filter(word =>
+      word.length > 3 && !commonWords.has(word)
+    );
+
+    const matchCount = relevantQuestionWords.filter(word =>
+      contentWords.some(contentWord => contentWord.includes(word) || word.includes(contentWord))
+    ).length;
+
+    const hasRelevantContent = matchCount > 0;
+
+    // Build conversation history for context
+    const conversationContext = conversationHistory
+      .map(msg => `${msg.role === 'user' ? 'Student' : 'Tutor'}: ${msg.content}`)
+      .join('\n\n');
+
+    // Create system prompt
+    const systemPrompt = `You are a friendly and helpful Greek language tutor! Your goal is to make learning Greek fun and easy. 😊
+
+**YOUR STYLE:**
+- Be warm, encouraging, and conversational (like talking to a friend!)
+- Keep answers SHORT and SIMPLE - no long paragraphs
+- Use easy-to-understand language
+- Be enthusiastic about helping students learn!
+- Use emojis occasionally to be friendly ✨
+
+**ANSWERING QUESTIONS:**
+${hasRelevantContent
+  ? `- This question is about the lesson: "${lesson.name}"
+- Give a simple, clear answer based on what's in the lesson materials
+- Keep it brief - 2-3 sentences max when possible
+- If you need to explain more, use bullet points`
+  : `- This isn't in the lesson materials, but that's okay!
+- Let them know kindly: "I don't see that in your lesson materials, but here's what I know..."
+- Give a quick, helpful answer anyway`}
+
+**TEACHING GREEK:**
+- When showing Greek words, always show the English too (like: γεια σου = hello)
+- Keep grammar explanations super simple
+- Give 1-2 quick examples instead of long explanations
+- Make it feel easy and achievable!
+
+**YOUR TONE:**
+- Friendly and supportive, like a helpful study buddy
+- Positive and encouraging ("Great question!", "You've got this!")
+- Never overwhelming or too academic
+- Make them feel confident about learning Greek
+
+---
+
+**LESSON MATERIALS (${lesson.name}):**
+${pdfContents}
+
+---
+
+**PREVIOUS CHAT:**
+${conversationContext || 'This is a new conversation'}
+
+---
+
+Now answer their question in a simple, friendly way! Keep it short and sweet. 🌟`;
+
+    // Call Gemini API
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+    });
+
+    const result = await model.generateContent(systemPrompt + '\n\nStudent: ' + userMessage);
+    const response = result.response.text();
+
+    return {
+      success: true,
+      response: response,
+    };
+
+  } catch (error) {
+    console.error('Chat with lesson error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to process message',
+    };
+  }
+}

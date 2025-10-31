@@ -58,11 +58,16 @@ export default function StudentDashboardPage() {
     <div className="min-h-screen bg-base-200 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold">My Classes</h1>
-          <p className="text-base-content/70 mt-2">
-            Access learning materials and resources from your classes
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold">My Classes</h1>
+            <p className="text-base-content/70 mt-2">
+              Access learning materials and resources from your classes
+            </p>
+          </div>
+          <Link href="/" className="btn btn-ghost">
+            Home
+          </Link>
         </div>
 
         {/* Error Message */}

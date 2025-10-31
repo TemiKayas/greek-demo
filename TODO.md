@@ -431,3 +431,14 @@ GEMINI_API_KEY="<your-key>"
 
 **Last Updated:** October 29, 2025
 **Status:** Phase 1-4 Complete ✅ | Phase 5 Next (Material Sharing System)
+
+
+add filters for pdf orgqniaagion 
+Condense every lesson down to llm code to allow generation to work off of any weeks material, or atleast be able to see and summerize 
+picture generator, have context allow AI to build image description and questions, then geneate image
+iterate on work sheets more, a lot more
+guided chatbots, give them information that theyll need, then put them into a sort of structured chat for that activity, like building muscle memory 
+
+conversation from the greek games website, but generated consistenantly on the material we gave it
+
+audio player + transcriber to store context as well 

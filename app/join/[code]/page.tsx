@@ -74,6 +74,9 @@ export default function JoinClassPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        <Link href="/" className="btn btn-ghost btn-sm absolute top-4 left-4">
+          ← Home
+        </Link>
         <div className="card w-full max-w-md bg-base-100 shadow-xl">
           <div className="card-body items-center text-center">
             <span className="loading loading-spinner loading-lg"></span>
@@ -87,6 +90,9 @@ export default function JoinClassPage() {
   if (!validation || !validation.valid) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        <Link href="/" className="btn btn-ghost btn-sm absolute top-4 left-4">
+          ← Home
+        </Link>
         <div className="card w-full max-w-md bg-base-100 shadow-xl">
           <div className="card-body items-center text-center">
             <svg
@@ -122,6 +128,9 @@ export default function JoinClassPage() {
 
   return (
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+      <Link href="/" className="btn btn-ghost btn-sm absolute top-4 left-4">
+        ← Home
+      </Link>
       <div className="card w-full max-w-md bg-base-100 shadow-xl">
         <div className="card-body">
           <div className="text-center mb-6">

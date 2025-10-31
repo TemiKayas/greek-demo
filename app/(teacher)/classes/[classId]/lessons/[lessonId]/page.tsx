@@ -11,6 +11,7 @@ import ChatbotTab from '@/app/library/components/ChatbotTab';
 import WorksheetTab from '@/app/library/components/WorksheetTab';
 import FlashcardTab from '@/app/library/components/FlashcardTab';
 import ChatHistoryTab from '@/app/library/components/ChatHistoryTab';
+import StudentChatsTab from './StudentChatsTab';
 
 // Dynamically import PDFViewer to avoid SSR issues with react-pdf
 const PDFViewer = dynamic(() => import('@/app/library/components/PDFViewer'), {
@@ -44,7 +45,7 @@ type Lesson = {
   };
 };
 
-type Tab = 'pdf' | 'chat' | 'worksheet' | 'flashcard' | 'history';
+type Tab = 'pdf' | 'chat' | 'worksheet' | 'flashcard' | 'history' | 'students';
 
 export default function LessonDetailPage() {
   const params = useParams();
@@ -168,12 +169,6 @@ export default function LessonDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link href="/library" className="btn btn-ghost btn-sm sm:btn-md">
-                Library
-              </Link>
-              <Link href="/" className="btn btn-ghost btn-sm sm:btn-md">
-                Home
-              </Link>
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="btn btn-primary btn-sm sm:btn-md gap-2"
@@ -283,6 +278,20 @@ export default function LessonDetailPage() {
                       <span className="hidden sm:inline">CHAT HISTORY</span>
                       <span className="sm:hidden">HISTORY</span>
                     </button>
+                    <button
+                      onClick={() => setActiveTab('students')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors border-b-2 ${
+                        activeTab === 'students'
+                          ? 'border-primary text-primary bg-base-200'
+                          : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50'
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="hidden sm:inline">STUDENT CHATS</span>
+                      <span className="sm:hidden">STUDENTS</span>
+                    </button>
                   </div>
                 </div>
 
@@ -310,6 +319,12 @@ export default function LessonDetailPage() {
                   {activeTab === 'history' && (
                     <ChatHistoryTab
                       pdfId={selectedPdf.id}
+                    />
+                  )}
+                  {activeTab === 'students' && (
+                    <StudentChatsTab
+                      classId={classId}
+                      lessonId={lessonId}
                     />
                   )}
                 </div>

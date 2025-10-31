@@ -86,6 +86,9 @@ export default function StudentClassMaterialsPage() {
               Access learning materials organized by lesson
             </p>
           </div>
+          <Link href="/" className="btn btn-ghost">
+            Home
+          </Link>
         </div>
 
         {/* Error Message */}

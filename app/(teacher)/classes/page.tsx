@@ -103,10 +103,14 @@ export default function ClassesPage() {
               Manage your classes and invite students
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary"
-          >
+          <div className="flex gap-2">
+            <Link href="/" className="btn btn-ghost">
+              Home
+            </Link>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary"
+            >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5 mr-2"
@@ -121,6 +125,7 @@ export default function ClassesPage() {
             </svg>
             Create Class
           </button>
+          </div>
         </div>
 
         {/* Error Message */}

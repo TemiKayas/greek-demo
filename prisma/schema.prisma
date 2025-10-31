@@ -112,9 +112,10 @@ model Lesson {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  classes  LessonClass[]     // Classes this lesson is shared with
-  pdfs     PDF[]             // PDFs uploaded for this lesson
-  materials Material[]        // Generated materials for this lesson
+  classes           LessonClass[]        // Classes this lesson is shared with
+  pdfs              PDF[]                // PDFs uploaded for this lesson
+  materials         Material[]           // Generated materials for this lesson
+  chatConversations ChatConversation[]   // Student chats about this lesson
 
   @@index([creatorId])
   @@index([createdAt])
@@ -228,8 +229,9 @@ model ClassMaterial {
 
 model ChatConversation {
   id          String   @id @default(cuid())
-  userId      String   // Student who started the chat
-  classId     String   // Which class they're in
+  userId      String   // User who started the chat
+  classId     String?  // Optional: Which class they're in (null for teacher library)
+  lessonId    String?  // Optional: Which lesson they're viewing (for students)
   pdfId       String?  // Optional: PDF they were viewing
   materialId  String?  // Optional: Material they were viewing
   title       String   // Auto-generated or user-provided
@@ -238,7 +240,8 @@ model ChatConversation {
 
   // Relations
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  class    Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class    Class?        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lesson   Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   pdf      PDF?          @relation(fields: [pdfId], references: [id], onDelete: SetNull)
   material Material?     @relation(fields: [materialId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
@@ -246,6 +249,7 @@ model ChatConversation {
   @@index([userId])
   @@index([classId, createdAt]) // For teacher insights
   @@index([classId, userId]) // Get all chats by student in class
+  @@index([lessonId, classId]) // Get all chats about a lesson in a class
   @@index([materialId, classId]) // Get all chats about a material
 }
 
