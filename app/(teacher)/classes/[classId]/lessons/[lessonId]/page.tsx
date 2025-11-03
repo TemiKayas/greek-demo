@@ -65,6 +65,8 @@ export default function LessonDetailPage() {
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [packetRefresh, setPacketRefresh] = useState(0);
   const [activePacketItemId, setActivePacketItemId] = useState<string | null>(null);
+  const [activeWorksheetId, setActiveWorksheetId] = useState<string | null>(null);
+  const [activeFlashcardId, setActiveFlashcardId] = useState<string | null>(null);
 
   useEffect(() => {
     if (lessonId) {
@@ -117,11 +119,17 @@ export default function LessonDetailPage() {
       if (pdf) {
         setSelectedPdf(pdf);
         setActiveTab('pdf');
+        setActiveWorksheetId(null);
+        setActiveFlashcardId(null);
       }
     } else if (type === 'WORKSHEET') {
       setActiveTab('worksheet');
+      setActiveWorksheetId(itemId); // Set the specific worksheet ID
+      setActiveFlashcardId(null);
     } else if (type === 'FLASHCARD') {
       setActiveTab('flashcard');
+      setActiveFlashcardId(itemId); // Set the specific flashcard ID
+      setActiveWorksheetId(null);
     }
   }
 
@@ -306,7 +314,10 @@ export default function LessonDetailPage() {
               </button>
 
               <button
-                onClick={() => setActiveTab('worksheet')}
+                onClick={() => {
+                  setActiveTab('worksheet');
+                  setActiveWorksheetId(null); // Clear to show general interface
+                }}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
                   activeTab === 'worksheet'
                     ? 'bg-primary text-primary-content'
@@ -320,7 +331,10 @@ export default function LessonDetailPage() {
               </button>
 
               <button
-                onClick={() => setActiveTab('flashcard')}
+                onClick={() => {
+                  setActiveTab('flashcard');
+                  setActiveFlashcardId(null); // Clear to show general interface
+                }}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
                   activeTab === 'flashcard'
                     ? 'bg-primary text-primary-content'
@@ -408,6 +422,7 @@ export default function LessonDetailPage() {
                     pdfId={selectedPdf.id}
                     extractedText={selectedPdf.processedContent?.extractedText || ''}
                     lessonId={lessonId}
+                    worksheetId={activeWorksheetId}
                     onWorksheetGenerated={() => setPacketRefresh(prev => prev + 1)}
                   />
                 )}
@@ -416,6 +431,7 @@ export default function LessonDetailPage() {
                     pdfId={selectedPdf.id}
                     extractedText={selectedPdf.processedContent?.extractedText || ''}
                     lessonId={lessonId}
+                    flashcardId={activeFlashcardId}
                     onFlashcardGenerated={() => setPacketRefresh(prev => prev + 1)}
                   />
                 )}

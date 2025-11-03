@@ -33,7 +33,7 @@ export async function GET(
       return new NextResponse(fileBuffer, {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `inline; filename="${pdf.fileName}"`,
+          'Content-Disposition': `inline; filename="${pdf.filename}"`,
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
       });

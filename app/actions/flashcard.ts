@@ -168,6 +168,28 @@ export async function getFlashcards(pdfId: string): Promise<GetMaterialsResult> 
   }
 }
 
+export async function updateFlashcards(
+  flashcardId: string,
+  content: FlashcardData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.material.update({
+      where: { id: flashcardId },
+      data: {
+        title: content.title,
+        content: JSON.stringify(content),
+      },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Update flashcards error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update flashcards',
+    };
+  }
+}
+
 export async function deleteFlashcards(flashcardId: string): Promise<{ success: boolean; error?: string }> {
   try {
     await db.material.delete({

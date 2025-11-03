@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { generateWorksheet, getWorksheets, deleteWorksheet } from '@/app/actions/worksheet';
+import { generateWorksheet, getWorksheets, deleteWorksheet, updateWorksheet } from '@/app/actions/worksheet';
 import { autoAddToPacket } from '@/app/actions/packet-utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -9,8 +9,9 @@ import html2canvas from 'html2canvas';
 type Props = {
   pdfId: string;
   extractedText: string;
-  lessonId?: string; // Optional for backward compatibility
-  onWorksheetGenerated?: () => void; // Callback to trigger packet refresh
+  lessonId?: string;
+  worksheetId?: string | null; // Optional: Load a specific worksheet
+  onWorksheetGenerated?: () => void;
 };
 
 type WorksheetQuestion = {
@@ -33,22 +34,34 @@ type SavedWorksheet = {
   content: WorksheetData;
 };
 
-export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorksheetGenerated }: Props) {
+export default function WorksheetTab({ pdfId, extractedText, lessonId, worksheetId, onWorksheetGenerated }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [worksheet, setWorksheet] = useState<WorksheetData | null>(null);
+  const [editingWorksheet, setEditingWorksheet] = useState<WorksheetData | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [currentWorksheetId, setCurrentWorksheetId] = useState<string | null>(null);
   const [numQuestions, setNumQuestions] = useState(5);
   const [showAnswers, setShowAnswers] = useState(false);
   const [savedWorksheets, setSavedWorksheets] = useState<SavedWorksheet[]>([]);
   const [isLoadingPast, setIsLoadingPast] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const worksheetRef = useRef<HTMLDivElement>(null);
 
-  // Load past worksheets on mount
   useEffect(() => {
     loadPastWorksheets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfId]);
+
+  // Load specific worksheet when worksheetId prop changes
+  useEffect(() => {
+    if (worksheetId && savedWorksheets.length > 0) {
+      const found = savedWorksheets.find(w => w.id === worksheetId);
+      if (found) {
+        loadWorksheet(found);
+      }
+    }
+  }, [worksheetId, savedWorksheets]);
 
   async function loadPastWorksheets() {
     setIsLoadingPast(true);
@@ -61,29 +74,21 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
 
   async function handleGenerate() {
     setIsGenerating(true);
-    console.log('[WorksheetTab] Generating worksheet, lessonId:', lessonId);
     const result = await generateWorksheet(pdfId, numQuestions);
 
     if (result.success && result.data) {
-      console.log('[WorksheetTab] Worksheet generated:', result.data.id);
       setWorksheet(result.data.content);
+      setEditingWorksheet(JSON.parse(JSON.stringify(result.data.content)));
+      setIsEditMode(true);
       setCurrentWorksheetId(result.data.id);
       setShowAnswers(false);
-      // Reload past worksheets
       await loadPastWorksheets();
 
-      // Auto-add worksheet to packet if lessonId is provided
       if (lessonId) {
-        console.log('[WorksheetTab] Auto-adding worksheet to packet...');
-        const addResult = await autoAddToPacket(lessonId, 'WORKSHEET', result.data.id);
-        console.log('[WorksheetTab] Auto-add result:', addResult);
-        // Trigger packet refresh callback
+        await autoAddToPacket(lessonId, 'WORKSHEET', result.data.id);
         if (onWorksheetGenerated) {
-          console.log('[WorksheetTab] Triggering packet refresh callback');
           onWorksheetGenerated();
         }
-      } else {
-        console.warn('[WorksheetTab] No lessonId provided, skipping auto-add to packet');
       }
     } else {
       alert('Failed to generate worksheet: ' + result.error);
@@ -94,8 +99,118 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
 
   function loadWorksheet(saved: SavedWorksheet) {
     setWorksheet(saved.content);
+    setEditingWorksheet(null);
+    setIsEditMode(false);
     setCurrentWorksheetId(saved.id);
     setShowAnswers(false);
+  }
+
+  function enterEditMode() {
+    if (!worksheet) return;
+    setEditingWorksheet(JSON.parse(JSON.stringify(worksheet)));
+    setIsEditMode(true);
+  }
+
+  async function saveChanges() {
+    if (!editingWorksheet || !currentWorksheetId) return;
+
+    setIsSaving(true);
+    const result = await updateWorksheet(currentWorksheetId, editingWorksheet);
+
+    if (result.success) {
+      setWorksheet(editingWorksheet);
+      setIsEditMode(false);
+      setEditingWorksheet(null);
+    } else {
+      alert('Failed to save changes: ' + result.error);
+    }
+
+    setIsSaving(false);
+  }
+
+  function cancelEditing() {
+    if (!confirm('Discard all changes?')) return;
+    setEditingWorksheet(null);
+    setIsEditMode(false);
+  }
+
+  function addQuestion(position: 'top' | 'after' | 'bottom', afterIndex?: number) {
+    if (!editingWorksheet) return;
+
+    const newQuestion: WorksheetQuestion = {
+      type: 'short_answer',
+      question: 'New question',
+      answer: 'Answer',
+    };
+
+    const newQuestions = [...editingWorksheet.questions];
+
+    if (position === 'top') {
+      newQuestions.unshift(newQuestion);
+    } else if (position === 'bottom') {
+      newQuestions.push(newQuestion);
+    } else if (position === 'after' && afterIndex !== undefined) {
+      newQuestions.splice(afterIndex + 1, 0, newQuestion);
+    }
+
+    setEditingWorksheet({ ...editingWorksheet, questions: newQuestions });
+  }
+
+  function deleteQuestion(index: number) {
+    if (!editingWorksheet) return;
+    if (!confirm('Delete this question?')) return;
+
+    const newQuestions = editingWorksheet.questions.filter((_, i) => i !== index);
+    setEditingWorksheet({ ...editingWorksheet, questions: newQuestions });
+  }
+
+  function updateQuestion(index: number, field: keyof WorksheetQuestion, value: any) {
+    if (!editingWorksheet) return;
+
+    const newQuestions = [...editingWorksheet.questions];
+    newQuestions[index] = { ...newQuestions[index], [field]: value };
+
+    if (field === 'type') {
+      if (value === 'multiple_choice' && !newQuestions[index].options) {
+        newQuestions[index].options = ['Option A', 'Option B', 'Option C', 'Option D'];
+      } else if (value !== 'multiple_choice') {
+        delete newQuestions[index].options;
+      }
+    }
+
+    setEditingWorksheet({ ...editingWorksheet, questions: newQuestions });
+  }
+
+  function updateOption(questionIndex: number, optionIndex: number, value: string) {
+    if (!editingWorksheet) return;
+
+    const newQuestions = [...editingWorksheet.questions];
+    if (newQuestions[questionIndex].options) {
+      const newOptions = [...newQuestions[questionIndex].options!];
+      newOptions[optionIndex] = value;
+      newQuestions[questionIndex] = { ...newQuestions[questionIndex], options: newOptions };
+      setEditingWorksheet({ ...editingWorksheet, questions: newQuestions });
+    }
+  }
+
+  function handleDragStart(index: number) {
+    setDraggedIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+  }
+
+  function handleDrop(e: React.DragEvent, dropIndex: number) {
+    e.preventDefault();
+    if (draggedIndex === null || !editingWorksheet) return;
+
+    const newQuestions = [...editingWorksheet.questions];
+    const [removed] = newQuestions.splice(draggedIndex, 1);
+    newQuestions.splice(dropIndex, 0, removed);
+
+    setEditingWorksheet({ ...editingWorksheet, questions: newQuestions });
+    setDraggedIndex(null);
   }
 
   async function handleDelete(worksheetId: string) {
@@ -103,7 +218,6 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
 
     const result = await deleteWorksheet(worksheetId);
     if (result.success) {
-      // If currently viewing deleted worksheet, clear it
       if (currentWorksheetId === worksheetId) {
         setWorksheet(null);
         setCurrentWorksheetId(null);
@@ -118,14 +232,11 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
     setIsDownloading(true);
 
     try {
-      // Temporarily set the answers state for rendering
       const originalShowAnswers = showAnswers;
       setShowAnswers(includeAnswers);
 
-      // Wait for state to update and render
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Capture the worksheet as canvas with specific settings
       const canvas = await html2canvas(worksheetRef.current, {
         scale: 2,
         useCORS: true,
@@ -136,7 +247,6 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
         windowHeight: worksheetRef.current.scrollHeight,
       });
 
-      // Create PDF
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -149,7 +259,6 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
 
-      // Calculate dimensions to fit on page with margins
       const margin = 10;
       const availableWidth = pdfWidth - (2 * margin);
       const availableHeight = pdfHeight - (2 * margin);
@@ -161,12 +270,10 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
       let yPosition = margin;
       let heightLeft = scaledHeight;
 
-      // Add first page
       pdf.addImage(imgData, 'PNG', margin, yPosition, scaledWidth, scaledHeight);
 
       heightLeft -= (pdfHeight - 2 * margin);
 
-      // Add additional pages if needed
       while (heightLeft > 0) {
         yPosition = -(pdfHeight - 2 * margin) * ((scaledHeight - heightLeft) / scaledHeight);
         pdf.addPage();
@@ -174,13 +281,11 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
         heightLeft -= (pdfHeight - 2 * margin);
       }
 
-      // Save the PDF
       const filename = includeAnswers
         ? `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}_answers.pdf`
         : `${worksheet.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
       pdf.save(filename);
 
-      // Restore original state
       setShowAnswers(originalShowAnswers);
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -200,9 +305,11 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
     }
   }
 
+  const displayWorksheet = isEditMode ? editingWorksheet : worksheet;
+
   return (
     <div className="h-full flex flex-col bg-base-100">
-      {!worksheet ? (
+      {!displayWorksheet ? (
         <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
           <div className="text-center max-w-2xl w-full">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
@@ -215,7 +322,6 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
               Generate practice exercises and comprehension questions based on your PDF content.
             </p>
 
-            {/* Past worksheets dropdown - AT THE TOP */}
             {savedWorksheets.length > 0 && (
               <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4 mb-4 sm:mb-6">
                 <label className="block text-xs sm:text-sm font-medium mb-2 text-primary">
@@ -248,12 +354,11 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
                   <li>• True/False statements</li>
                   <li>• Fill-in-the-blank exercises</li>
                   <li>• Short answer questions</li>
-                  <li>• Greek grammar and vocabulary focus</li>
+                  <li>• Full inline editing with drag-and-drop</li>
                   <li>• Downloadable PDF with answer key</li>
                 </ul>
               </div>
 
-              {/* Number of questions selector */}
               <div className="card bg-base-200 border border-base-content/10 p-3 sm:p-4">
                 <label className="block text-xs sm:text-sm font-medium mb-2 text-primary">
                   Number of Questions: {numQuestions}
@@ -298,161 +403,300 @@ export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorkshe
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Action buttons - Fixed at top */}
+          {/* Action buttons */}
           <div className="bg-base-200 border-b border-base-300 p-3 sm:p-4 flex-shrink-0">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-              <h3 className="text-base sm:text-xl font-bold text-base-content truncate">{worksheet.title}</h3>
+              {isEditMode ? (
+                <input
+                  type="text"
+                  value={editingWorksheet?.title || ''}
+                  onChange={(e) => setEditingWorksheet(editingWorksheet ? { ...editingWorksheet, title: e.target.value } : null)}
+                  className="input input-bordered input-sm sm:input-md flex-1 font-bold"
+                />
+              ) : (
+                <h3 className="text-base sm:text-xl font-bold text-base-content truncate">{worksheet.title}</h3>
+              )}
+
               <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-                <button
-                  onClick={() => setShowAnswers(!showAnswers)}
-                  className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
-                  disabled={isDownloading}
-                >
-                  {showAnswers ? 'Hide Answers' : 'Show Answers'}
-                </button>
-                <button
-                  onClick={() => downloadWorksheetPDF(false)}
-                  className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <span className="loading loading-spinner loading-xs"></span>
-                  ) : (
-                    <span className="hidden sm:inline">Download Worksheet</span>
-                  )}
-                  <span className="sm:hidden">Download</span>
-                </button>
-                <button
-                  onClick={() => downloadWorksheetPDF(true)}
-                  className="btn btn-xs sm:btn-sm btn-primary flex-1 sm:flex-none"
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <span className="loading loading-spinner loading-xs"></span>
-                  ) : (
-                    <span className="hidden sm:inline">Download Answer Key</span>
-                  )}
-                  <span className="sm:hidden">Answers</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setWorksheet(null);
-                    setCurrentWorksheetId(null);
-                  }}
-                  className="btn btn-xs sm:btn-sm btn-ghost"
-                  disabled={isDownloading}
-                >
-                  Close
-                </button>
+                {isEditMode ? (
+                  <>
+                    <button
+                      onClick={saveChanges}
+                      className="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? <span className="loading loading-spinner loading-xs"></span> : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      className="btn btn-ghost btn-xs sm:btn-sm flex-1 sm:flex-none"
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={enterEditMode}
+                      className="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setShowAnswers(!showAnswers)}
+                      className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
+                      disabled={isDownloading}
+                    >
+                      {showAnswers ? 'Hide Answers' : 'Show Answers'}
+                    </button>
+                    <button
+                      onClick={() => downloadWorksheetPDF(false)}
+                      className="btn btn-xs sm:btn-sm btn-outline flex-1 sm:flex-none"
+                      disabled={isDownloading}
+                    >
+                      {isDownloading ? <span className="loading loading-spinner loading-xs"></span> : 'Download'}
+                    </button>
+                    <button
+                      onClick={() => downloadWorksheetPDF(true)}
+                      className="btn btn-xs sm:btn-sm btn-accent flex-1 sm:flex-none"
+                      disabled={isDownloading}
+                    >
+                      Download Answers
+                    </button>
+                    <button
+                      onClick={() => {
+                        setWorksheet(null);
+                        setCurrentWorksheetId(null);
+                      }}
+                      className="btn btn-xs sm:btn-sm btn-ghost"
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Worksheet content - Scrollable */}
+          {/* Worksheet content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-base-100">
-            <div
-              ref={worksheetRef}
-              style={{
-                backgroundColor: '#ffffff',
-                color: '#000000',
-                padding: '40px',
-                maxWidth: '800px',
-                margin: '0 auto',
-                fontFamily: 'Arial, sans-serif',
-                minHeight: '1000px',
-              }}
-            >
-              {/* Header */}
-              <div style={{ borderBottom: '2px solid #000000', paddingBottom: '15px', marginBottom: '25px' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000000', margin: '0 0 10px 0' }}>
-                  {worksheet.title}
-                </h1>
-                <p style={{ fontSize: '14px', color: '#333333', margin: '0' }}>
-                  {showAnswers ? 'Answer Key' : 'Student Worksheet'}
-                </p>
-                <div style={{ marginTop: '10px', fontSize: '12px', color: '#666666' }}>
-                  <p style={{ margin: '5px 0' }}>Name: _______________________________</p>
-                  <p style={{ margin: '5px 0' }}>Date: _______________________________</p>
+            {isEditMode ? (
+              // EDIT MODE
+              <div className="max-w-4xl mx-auto space-y-4">
+                {/* Add Question at Top */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => addQuestion('top')}
+                    className="btn btn-sm btn-primary"
+                  >
+                    + Add Question at Top
+                  </button>
                 </div>
-              </div>
 
-              {/* Questions */}
-              <div style={{ marginTop: '20px' }}>
-                {worksheet.questions.map((q, idx) => (
-                  <div key={idx} style={{ marginBottom: '35px', pageBreakInside: 'avoid' }}>
-                    {/* Question Header */}
-                    <div style={{ marginBottom: '10px' }}>
-                      <span style={{ fontSize: '12px', color: '#666666', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
-                        {formatQuestionType(q.type)}
-                      </span>
-                      <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#000000', margin: '0', lineHeight: '1.5' }}>
-                        {idx + 1}. {q.question}
-                      </p>
+                {editingWorksheet?.questions.map((q, index) => (
+                  <div
+                    key={index}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className="card bg-base-200 border-2 border-base-300 p-4 cursor-move hover:border-primary transition-colors"
+                  >
+                    <div className="flex items-start gap-2 mb-3">
+                      <div className="badge badge-neutral">Q{index + 1}</div>
+                      <select
+                        value={q.type}
+                        onChange={(e) => updateQuestion(index, 'type', e.target.value)}
+                        className="select select-bordered select-sm flex-1"
+                      >
+                        <option value="multiple_choice">Multiple Choice</option>
+                        <option value="true_false">True/False</option>
+                        <option value="fill_blank">Fill in the Blank</option>
+                        <option value="short_answer">Short Answer</option>
+                      </select>
+                      <button
+                        onClick={() => deleteQuestion(index)}
+                        className="btn btn-error btn-sm btn-circle"
+                      >
+                        ×
+                      </button>
                     </div>
 
-                    {/* Multiple choice options */}
-                    {q.type === 'multiple_choice' && q.options && (
-                      <div style={{ marginTop: '12px', marginLeft: '20px' }}>
-                        {q.options.map((option, optIdx) => (
-                          <div key={optIdx} style={{ marginBottom: '8px', display: 'flex', alignItems: 'flex-start' }}>
-                            <span style={{ marginRight: '8px', fontSize: '14px' }}>
-                              {String.fromCharCode(65 + optIdx)}.
-                            </span>
-                            <span style={{ fontSize: '14px', color: '#000000' }}>
-                              {option}
-                              {showAnswers && option === q.answer && (
-                                <strong style={{ marginLeft: '10px' }}> (CORRECT)</strong>
-                              )}
-                            </span>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="label label-text-alt">Question:</label>
+                        <textarea
+                          value={q.question}
+                          onChange={(e) => updateQuestion(index, 'question', e.target.value)}
+                          className="textarea textarea-bordered w-full"
+                          rows={2}
+                        />
+                      </div>
+
+                      {q.type === 'multiple_choice' && q.options && (
+                        <div>
+                          <label className="label label-text-alt">Options:</label>
+                          <div className="space-y-2">
+                            {q.options.map((opt, optIndex) => (
+                              <input
+                                key={optIndex}
+                                type="text"
+                                value={opt}
+                                onChange={(e) => updateOption(index, optIndex, e.target.value)}
+                                className="input input-bordered input-sm w-full"
+                                placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                              />
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      )}
 
-                    {/* Answer section for answer key */}
-                    {showAnswers && (
-                      <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f0f0f0', border: '1px solid #cccccc' }}>
-                        <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0 0 5px 0' }}>
-                          ANSWER:
-                        </p>
-                        <p style={{ fontSize: '13px', margin: '0 0 10px 0' }}>
-                          {q.answer}
-                        </p>
-                        {q.explanation && (
-                          <>
-                            <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '10px 0 5px 0' }}>
-                              EXPLANATION:
-                            </p>
-                            <p style={{ fontSize: '13px', margin: '0' }}>
-                              {q.explanation}
-                            </p>
-                          </>
-                        )}
+                      <div>
+                        <label className="label label-text-alt">Answer:</label>
+                        <input
+                          type="text"
+                          value={q.answer}
+                          onChange={(e) => updateQuestion(index, 'answer', e.target.value)}
+                          className="input input-bordered input-sm w-full"
+                        />
                       </div>
-                    )}
 
-                    {/* Answer lines for student worksheet */}
-                    {!showAnswers && q.type !== 'multiple_choice' && (
-                      <div style={{ marginTop: '15px' }}>
-                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
-                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
-                        <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                      <div>
+                        <label className="label label-text-alt">Explanation (optional):</label>
+                        <textarea
+                          value={q.explanation || ''}
+                          onChange={(e) => updateQuestion(index, 'explanation', e.target.value)}
+                          className="textarea textarea-bordered w-full"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Add question after this one (only if not the last question) */}
+                    {index < (editingWorksheet?.questions.length || 0) - 1 && (
+                      <div className="flex justify-center mt-3 pt-3 border-t border-base-300">
+                        <button
+                          onClick={() => addQuestion('after', index)}
+                          className="btn btn-xs btn-ghost gap-1"
+                        >
+                          <span className="text-lg">+</span>
+                          Add Question Here
+                        </button>
                       </div>
                     )}
                   </div>
                 ))}
-              </div>
 
-              {/* Footer */}
-              <div style={{ marginTop: '40px', paddingTop: '15px', borderTop: '1px solid #cccccc', textAlign: 'center' }}>
-                <p style={{ fontSize: '10px', color: '#666666', margin: '0' }}>
-                  Generated with Modern Greek Learning Assistant
-                </p>
+                {/* Add Question at Bottom */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => addQuestion('bottom')}
+                    className="btn btn-sm btn-primary"
+                  >
+                    + Add Question at Bottom
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              // VIEW MODE (for PDF download)
+              <div
+                ref={worksheetRef}
+                style={{
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
+                  padding: '40px',
+                  maxWidth: '800px',
+                  margin: '0 auto',
+                  fontFamily: 'Arial, sans-serif',
+                  minHeight: '1000px',
+                }}
+              >
+                <div style={{ borderBottom: '2px solid #000000', paddingBottom: '15px', marginBottom: '25px' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000000', margin: '0 0 10px 0' }}>
+                    {worksheet.title}
+                  </h1>
+                  <p style={{ fontSize: '14px', color: '#333333', margin: '0' }}>
+                    {showAnswers ? 'Answer Key' : 'Student Worksheet'}
+                  </p>
+                  <div style={{ marginTop: '10px', fontSize: '12px', color: '#666666' }}>
+                    <p style={{ margin: '5px 0' }}>Name: _______________________________</p>
+                    <p style={{ margin: '5px 0' }}>Date: _______________________________</p>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '20px' }}>
+                  {worksheet.questions.map((q, idx) => (
+                    <div key={idx} style={{ marginBottom: '35px', pageBreakInside: 'avoid' }}>
+                      <div style={{ marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: '#666666', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+                          {formatQuestionType(q.type)}
+                        </span>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#000000', margin: '0', lineHeight: '1.5' }}>
+                          {idx + 1}. {q.question}
+                        </p>
+                      </div>
+
+                      {q.type === 'multiple_choice' && q.options && (
+                        <div style={{ marginTop: '12px', marginLeft: '20px' }}>
+                          {q.options.map((option, optIdx) => (
+                            <div key={optIdx} style={{ marginBottom: '8px', display: 'flex', alignItems: 'flex-start' }}>
+                              <span style={{ marginRight: '8px', fontSize: '14px' }}>
+                                {String.fromCharCode(65 + optIdx)}.
+                              </span>
+                              <span style={{ fontSize: '14px', color: '#000000' }}>
+                                {option}
+                                {showAnswers && option === q.answer && (
+                                  <strong style={{ marginLeft: '10px' }}> (CORRECT)</strong>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {showAnswers && (
+                        <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f0f0f0', border: '1px solid #cccccc' }}>
+                          <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0 0 5px 0' }}>
+                            ANSWER:
+                          </p>
+                          <p style={{ fontSize: '13px', margin: '0 0 10px 0' }}>
+                            {q.answer}
+                          </p>
+                          {q.explanation && (
+                            <>
+                              <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '10px 0 5px 0' }}>
+                                EXPLANATION:
+                              </p>
+                              <p style={{ fontSize: '13px', margin: '0' }}>
+                                {q.explanation}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {!showAnswers && q.type !== 'multiple_choice' && (
+                        <div style={{ marginTop: '15px' }}>
+                          <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                          <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                          <div style={{ borderBottom: '1px solid #000000', marginBottom: '12px', paddingTop: '25px' }}></div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '40px', paddingTop: '15px', borderTop: '1px solid #cccccc', textAlign: 'center' }}>
+                  <p style={{ fontSize: '10px', color: '#666666', margin: '0' }}>
+                    Generated with Modern Greek Learning Assistant
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Delete button */}
-            {currentWorksheetId && (
+            {currentWorksheetId && !isEditMode && (
               <div className="flex justify-center mt-4 sm:mt-6">
                 <button
                   onClick={() => handleDelete(currentWorksheetId)}
