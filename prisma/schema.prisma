@@ -116,6 +116,7 @@ model Lesson {
   pdfs              PDF[]                // PDFs uploaded for this lesson
   materials         Material[]           // Generated materials for this lesson
   chatConversations ChatConversation[]   // Student chats about this lesson
+  packet            Packet?              // Digital packet for this lesson
 
   @@index([creatorId])
   @@index([createdAt])
@@ -264,4 +265,82 @@ model ChatMessage {
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+}
+
+// ============================================================================
+// DIGITAL PACKET SYSTEM
+// ============================================================================
+
+enum PacketStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PacketItemType {
+  PDF
+  FLASHCARD
+  WORKSHEET
+}
+
+model Packet {
+  id          String       @id @default(cuid())
+  lessonId    String       @unique // One packet per lesson
+  status      PacketStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  items    PacketItem[]
+  versions PacketVersion[]
+  openTabs PacketOpenTab[]
+
+  @@index([lessonId])
+  @@index([status])
+}
+
+model PacketItem {
+  id            String         @id @default(cuid())
+  packetId      String
+  itemType      PacketItemType
+  itemId        String // ID of PDF, Flashcard (Material), or Worksheet (Material)
+  order         Int
+  editedContent String?        @db.Text // JSON for edited worksheets/flashcards
+  createdAt     DateTime       @default(now())
+
+  // Relations
+  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
+
+  @@index([packetId, order])
+  @@index([itemType, itemId]) // For querying specific items
+}
+
+model PacketVersion {
+  id          String   @id @default(cuid())
+  packetId    String
+  version     Int
+  snapshot    String   @db.Text // JSON: Complete packet state at time of publish
+  publishedAt DateTime @default(now())
+  publishedBy String // userId of teacher who published
+
+  // Relations
+  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
+
+  @@unique([packetId, version])
+  @@index([packetId, version])
+}
+
+model PacketOpenTab {
+  id             String         @id @default(cuid())
+  packetId       String
+  itemType       PacketItemType
+  itemId         String
+  order          Int
+  lastAccessedAt DateTime       @default(now())
+
+  // Relations
+  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
+
+  @@index([packetId, order])
 }

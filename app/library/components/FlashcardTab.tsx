@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { generateFlashcards, getFlashcards, deleteFlashcards } from '@/app/actions/flashcard';
+import { autoAddToPacket } from '@/app/actions/packet-utils';
 
 type Props = {
   pdfId: string;
   extractedText: string;
+  lessonId?: string; // Optional for backward compatibility
+  onFlashcardGenerated?: () => void; // Callback to trigger packet refresh
 };
 
 type Flashcard = {
@@ -26,7 +29,7 @@ type SavedFlashcardSet = {
   content: FlashcardData;
 };
 
-export default function FlashcardTab({ pdfId, extractedText }: Props) {
+export default function FlashcardTab({ pdfId, extractedText, lessonId, onFlashcardGenerated }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [flashcardSet, setFlashcardSet] = useState<FlashcardData | null>(null);
   const [currentSetId, setCurrentSetId] = useState<string | null>(null);
@@ -59,9 +62,11 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
 
   async function handleGenerate() {
     setIsGenerating(true);
+    console.log('[FlashcardTab] Generating flashcards, lessonId:', lessonId);
     const result = await generateFlashcards(pdfId);
 
     if (result.success && result.data) {
+      console.log('[FlashcardTab] Flashcards generated:', result.data.id);
       setFlashcardSet(result.data.content);
       setCurrentSetId(result.data.id);
       setCurrentCard(0);
@@ -69,6 +74,20 @@ export default function FlashcardTab({ pdfId, extractedText }: Props) {
       setFilterCategory('all');
       // Reload past flashcards
       await loadPastFlashcards();
+
+      // Auto-add flashcard set to packet if lessonId is provided
+      if (lessonId) {
+        console.log('[FlashcardTab] Auto-adding flashcards to packet...');
+        const addResult = await autoAddToPacket(lessonId, 'FLASHCARD', result.data.id);
+        console.log('[FlashcardTab] Auto-add result:', addResult);
+        // Trigger packet refresh callback
+        if (onFlashcardGenerated) {
+          console.log('[FlashcardTab] Triggering packet refresh callback');
+          onFlashcardGenerated();
+        }
+      } else {
+        console.warn('[FlashcardTab] No lessonId provided, skipping auto-add to packet');
+      }
     } else {
       alert('Failed to generate flashcards: ' + result.error);
     }

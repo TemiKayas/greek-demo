@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { generateWorksheet, getWorksheets, deleteWorksheet } from '@/app/actions/worksheet';
+import { autoAddToPacket } from '@/app/actions/packet-utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 type Props = {
   pdfId: string;
   extractedText: string;
+  lessonId?: string; // Optional for backward compatibility
+  onWorksheetGenerated?: () => void; // Callback to trigger packet refresh
 };
 
 type WorksheetQuestion = {
@@ -30,7 +33,7 @@ type SavedWorksheet = {
   content: WorksheetData;
 };
 
-export default function WorksheetTab({ pdfId, extractedText }: Props) {
+export default function WorksheetTab({ pdfId, extractedText, lessonId, onWorksheetGenerated }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [worksheet, setWorksheet] = useState<WorksheetData | null>(null);
   const [currentWorksheetId, setCurrentWorksheetId] = useState<string | null>(null);
@@ -58,14 +61,30 @@ export default function WorksheetTab({ pdfId, extractedText }: Props) {
 
   async function handleGenerate() {
     setIsGenerating(true);
+    console.log('[WorksheetTab] Generating worksheet, lessonId:', lessonId);
     const result = await generateWorksheet(pdfId, numQuestions);
 
     if (result.success && result.data) {
+      console.log('[WorksheetTab] Worksheet generated:', result.data.id);
       setWorksheet(result.data.content);
       setCurrentWorksheetId(result.data.id);
       setShowAnswers(false);
       // Reload past worksheets
       await loadPastWorksheets();
+
+      // Auto-add worksheet to packet if lessonId is provided
+      if (lessonId) {
+        console.log('[WorksheetTab] Auto-adding worksheet to packet...');
+        const addResult = await autoAddToPacket(lessonId, 'WORKSHEET', result.data.id);
+        console.log('[WorksheetTab] Auto-add result:', addResult);
+        // Trigger packet refresh callback
+        if (onWorksheetGenerated) {
+          console.log('[WorksheetTab] Triggering packet refresh callback');
+          onWorksheetGenerated();
+        }
+      } else {
+        console.warn('[WorksheetTab] No lessonId provided, skipping auto-add to packet');
+      }
     } else {
       alert('Failed to generate worksheet: ' + result.error);
     }

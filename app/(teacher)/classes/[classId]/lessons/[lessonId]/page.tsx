@@ -11,6 +11,9 @@ import WorksheetTab from '@/app/library/components/WorksheetTab';
 import FlashcardTab from '@/app/library/components/FlashcardTab';
 import ChatHistoryTab from '@/app/library/components/ChatHistoryTab';
 import StudentChatsTab from './StudentChatsTab';
+import PacketTabs from './PacketTabs';
+import { autoAddToPacket } from '@/app/actions/packet-utils';
+import { PacketItemType } from '@prisma/client';
 
 // Dynamically import PDFViewer to avoid SSR issues with react-pdf
 const PDFViewer = dynamic(() => import('@/app/library/components/PDFViewer'), {
@@ -59,6 +62,9 @@ export default function LessonDetailPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
+  const [packetRefresh, setPacketRefresh] = useState(0);
+  const [activePacketItemId, setActivePacketItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (lessonId) {
@@ -92,6 +98,33 @@ export default function LessonDetailPage() {
     setIsLoading(false);
   }
 
+  async function handleSelectPdf(pdf: PDF) {
+    setSelectedPdf(pdf);
+    setActiveTab('pdf');
+    setActivePacketItemId(pdf.id);
+
+    // Auto-add PDF to packet
+    await autoAddToPacket(lessonId, 'PDF', pdf.id);
+    setPacketRefresh(prev => prev + 1); // Trigger packet refresh
+  }
+
+  function handlePacketTabChange(itemId: string, type: PacketItemType) {
+    setActivePacketItemId(itemId);
+
+    // Find the corresponding PDF or switch to worksheet/flashcard view
+    if (type === 'PDF') {
+      const pdf = pdfs.find(p => p.id === itemId);
+      if (pdf) {
+        setSelectedPdf(pdf);
+        setActiveTab('pdf');
+      }
+    } else if (type === 'WORKSHEET') {
+      setActiveTab('worksheet');
+    } else if (type === 'FLASHCARD') {
+      setActiveTab('flashcard');
+    }
+  }
+
   async function handleDelete(pdfId: string) {
     if (!confirm('Are you sure you want to delete this PDF?')) return;
 
@@ -103,6 +136,7 @@ export default function LessonDetailPage() {
       if (selectedPdf?.id === pdfId) {
         setSelectedPdf(null);
       }
+      setPacketRefresh(prev => prev + 1); // Trigger packet refresh
     } else {
       alert('Failed to delete PDF: ' + result.error);
     }
@@ -111,6 +145,7 @@ export default function LessonDetailPage() {
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setUploadError(null);
+    setUploadWarning(null);
     setUploading(true);
 
     const formData = new FormData(event.currentTarget);
@@ -122,10 +157,16 @@ export default function LessonDetailPage() {
     const result = await uploadAndProcessPDF(formData);
 
     if (result.success) {
+      // Check if there's a warning in the extracted text
+      if (result.data.extractedText?.includes('Text extraction failed')) {
+        setUploadWarning('PDF uploaded successfully, but text extraction failed. You can view the PDF but AI features (worksheets, flashcards) will not be available for this file.');
+      }
+
       setShowUploadModal(false);
       form.reset();
       await loadPDFs();
       await loadLessonDetails(); // Refresh lesson to update PDF count
+      setPacketRefresh(prev => prev + 1); // Trigger packet refresh
     } else {
       setUploadError(result.error);
     }
@@ -136,6 +177,25 @@ export default function LessonDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
       <>
+        {/* Warning Toast */}
+        {uploadWarning && (
+          <div className="toast toast-top toast-end z-50">
+            <div className="alert alert-warning">
+              <div className="flex gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="text-sm">{uploadWarning}</p>
+                  <button onClick={() => setUploadWarning(null)} className="btn btn-xs btn-ghost mt-1">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3 h-[calc(100vh-2rem)]">
         {/* Left Sidebar - Compact Menu */}
         <div className="w-56 bg-base-200 rounded-lg shadow-xl flex flex-col overflow-hidden">
@@ -204,7 +264,7 @@ export default function LessonDetailPage() {
                           ? 'bg-primary/20 text-primary'
                           : 'hover:bg-base-300'
                       }`}
-                      onClick={() => setSelectedPdf(pdf)}
+                      onClick={() => handleSelectPdf(pdf)}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -318,8 +378,23 @@ export default function LessonDetailPage() {
           </div>
 
           {/* Right Content Area */}
-          <div className="flex-1 bg-base-100 rounded-lg shadow-xl overflow-hidden">
-            {selectedPdf ? (
+          <div className="flex-1 bg-base-100 rounded-lg shadow-xl overflow-hidden flex flex-col">
+            {/* Packet Tabs - Always Visible */}
+            <PacketTabs
+              lessonId={lessonId}
+              activeItemId={activePacketItemId}
+              onTabChange={handlePacketTabChange}
+              triggerRefresh={packetRefresh}
+            />
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden">
+            {activeTab === 'students' ? (
+              <StudentChatsTab
+                classId={classId}
+                lessonId={lessonId}
+              />
+            ) : selectedPdf ? (
               <>
                 {activeTab === 'pdf' && <PDFViewer pdfId={selectedPdf.id} />}
                 {activeTab === 'chat' && (
@@ -332,23 +407,21 @@ export default function LessonDetailPage() {
                   <WorksheetTab
                     pdfId={selectedPdf.id}
                     extractedText={selectedPdf.processedContent?.extractedText || ''}
+                    lessonId={lessonId}
+                    onWorksheetGenerated={() => setPacketRefresh(prev => prev + 1)}
                   />
                 )}
                 {activeTab === 'flashcard' && (
                   <FlashcardTab
                     pdfId={selectedPdf.id}
                     extractedText={selectedPdf.processedContent?.extractedText || ''}
+                    lessonId={lessonId}
+                    onFlashcardGenerated={() => setPacketRefresh(prev => prev + 1)}
                   />
                 )}
                 {activeTab === 'history' && (
                   <ChatHistoryTab
                     pdfId={selectedPdf.id}
-                  />
-                )}
-                {activeTab === 'students' && (
-                  <StudentChatsTab
-                    classId={classId}
-                    lessonId={lessonId}
                   />
                 )}
               </>
@@ -374,6 +447,7 @@ export default function LessonDetailPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
 
@@ -385,6 +459,12 @@ export default function LessonDetailPage() {
               {uploadError && (
                 <div className="alert alert-error mb-4">
                   <span>{uploadError}</span>
+                </div>
+              )}
+
+              {uploadWarning && (
+                <div className="alert alert-warning mb-4">
+                  <span>{uploadWarning}</span>
                 </div>
               )}
 

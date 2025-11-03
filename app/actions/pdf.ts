@@ -53,34 +53,42 @@ export async function uploadAndProcessPDF(
       },
     });
 
-    // Extract text from PDF
+    // Extract text from PDF (try but don't fail if it doesn't work)
     console.log('Extracting text from PDF...');
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const extractedText = await extractTextFromPDF(buffer);
+    let extractedText = '';
+    let textExtractionFailed = false;
 
-    if (!extractedText || extractedText.length < 100) {
-      return {
-        success: false,
-        error: 'Could not extract enough text from PDF. Please try a different file.',
-      };
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      extractedText = await extractTextFromPDF(buffer);
+
+      if (extractedText && extractedText.length >= 100) {
+        // Save processed content only if extraction succeeded
+        console.log('Saving processed content...');
+        await db.processedContent.create({
+          data: {
+            pdfId: pdfRecord.id,
+            extractedText,
+            textLength: extractedText.length,
+          },
+        });
+      } else {
+        textExtractionFailed = true;
+        console.warn('PDF uploaded but text extraction yielded insufficient content');
+      }
+    } catch (extractError) {
+      textExtractionFailed = true;
+      console.error('Text extraction failed, but PDF was uploaded:', extractError);
     }
-
-    // Save processed content
-    console.log('Saving processed content...');
-    await db.processedContent.create({
-      data: {
-        pdfId: pdfRecord.id,
-        extractedText,
-        textLength: extractedText.length,
-      },
-    });
 
     return {
       success: true,
       data: {
         pdfId: pdfRecord.id,
-        extractedText: extractedText.substring(0, 500) + '...', // Return preview
+        extractedText: textExtractionFailed
+          ? 'Text extraction failed - PDF viewable but AI features unavailable'
+          : extractedText.substring(0, 500) + '...', // Return preview
       },
     };
   } catch (error) {

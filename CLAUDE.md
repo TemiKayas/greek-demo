@@ -46,13 +46,18 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
 2. `Class` - Teacher-owned classrooms
 3. `ClassMembership` - Student enrollments in classes
 4. `InviteCode` - Class invite system with expiration
-5. `PDF` - Uploaded PDF documents
-6. `ProcessedContent` - Extracted text from PDFs
-7. `Flashcard` - Generated flashcard sets
-8. `Worksheet` - Generated worksheets
-9. `ChatConversation` - Student chat sessions **with class/material context**
-10. `ChatMessage` - Individual messages in conversations
-11. `ClassMaterial` - Links materials to classes (many-to-many)
+5. `Lesson` - Reusable lesson units shared across classes
+6. `LessonClass` - Links lessons to classes (many-to-many)
+7. `PDF` - Uploaded PDF documents
+8. `ProcessedContent` - Extracted text from PDFs
+9. `Material` - Generated materials (flashcards, worksheets, summaries)
+10. `ClassMaterial` - Links materials to classes (many-to-many)
+11. `ChatConversation` - Student chat sessions **with class/material context**
+12. `ChatMessage` - Individual messages in conversations
+13. `Packet` - Digital packet per lesson (DRAFT or PUBLISHED)
+14. `PacketItem` - Items in packet (PDFs, flashcards, worksheets) with ordering
+15. `PacketVersion` - Version snapshots for published packets
+16. `PacketOpenTab` - UI state persistence for open tabs
 
 ### Key Design Decisions
 
@@ -114,6 +119,26 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
    }
    ```
 
+8. **Digital Packet System** ⭐ **NEW CORE FEATURE**
+   - **One packet per lesson**: Each `Lesson` has at most one `Packet`
+   - **Draft/Published workflow**: Packets start as DRAFT, can be PUBLISHED to students
+   - **Version history**: Every publish creates a `PacketVersion` snapshot (immutable)
+   - **Flexible content**: `PacketItem` can reference PDFs, flashcards (Material), or worksheets (Material)
+   - **Ordered items**: Items have an `order` field for sequencing
+   - **Inline editing**: `editedContent` field stores JSON for teacher modifications to worksheets/flashcards
+   - **UI state persistence**: `PacketOpenTab` stores which tabs are open (VS Code-style interface)
+   - **Student access**: Only PUBLISHED packets are visible to students via `getPublishedPacket()`
+   - **Security model**:
+     - Teachers must own the lesson to manage packets
+     - Students must be enrolled in a class that has the lesson shared
+   - **Key workflow**:
+     1. Teacher creates packet (auto-created on first access)
+     2. Teacher adds PDFs, flashcards, worksheets to packet
+     3. Teacher can edit worksheet/flashcard content inline (stored in `editedContent`)
+     4. Teacher publishes → Creates version snapshot, sets status to PUBLISHED
+     5. Students see published packet in their lesson view
+     6. Teacher can unpublish or republish (creates new version)
+
 ### Schema Indexes (Performance)
 
 **Critical indexes to add:**
@@ -137,6 +162,13 @@ This file contains technical notes, patterns, and gotchas for Claude (or any dev
 // Invite codes
 @@index([code])  // Fast lookup for join flow
 @@index([classId, isActive])  // Get active codes for a class
+
+// Packet system
+@@index([lessonId])              // Packet lookup by lesson
+@@index([status])                // Filter published packets
+@@index([packetId, order])       // PacketItem ordering
+@@index([itemType, itemId])      // Query specific items
+@@index([packetId, version])     // Version history lookup
 ```
 
 ---
@@ -969,11 +1001,45 @@ vercel logs                          # View logs
 
 ---
 
-**Last Updated:** October 29, 2025
-**Version:** 2.4 - Phase 1-4 Complete
-**Status:** ✅ Database | ✅ Auth | ✅ Class Management | ✅ Student Enrollment | Phase 5 Next (Material Sharing)
+**Last Updated:** November 3, 2025
+**Version:** 2.5 - Digital Packet System Implementation (In Progress)
+**Status:** ✅ Database | ✅ Auth | ✅ Class Management | ✅ Student Enrollment | ✅ Packet Backend | 🚧 Packet UI
 
 ## Changelog
+
+**v2.5 (November 3, 2025)** - Phase 5 In Progress (Digital Packet System)
+- ✅ **Database Schema for Packet System**
+  - Added 4 new models: `Packet`, `PacketItem`, `PacketVersion`, `PacketOpenTab`
+  - Enums: `PacketStatus` (DRAFT, PUBLISHED), `PacketItemType` (PDF, FLASHCARD, WORKSHEET)
+  - One-to-one relationship: Lesson → Packet (one packet per lesson)
+  - Packet items have order field for sequencing
+  - Version snapshots created on each publish
+  - UI state persistence via PacketOpenTab
+  - All indexes added for performance
+- ✅ **Packet Server Actions** (`app/actions/packet.ts`)
+  - getOrCreatePacket(lessonId) - Auto-create packet on first access
+  - getPacketWithItems(lessonId) - Fetch packet with all items and data
+  - addItemToPacket(packetId, itemType, itemId) - Add PDFs, flashcards, worksheets
+  - removeItemFromPacket(packetId, packetItemId) - Remove items
+  - reorderPacketItems(packetId, itemOrders[]) - Drag-and-drop reordering
+  - updatePacketItemContent(packetItemId, editedContent) - Inline editing support
+  - syncOpenTabs(packetId, tabs[]) - Persist UI state
+  - publishPacket(packetId) - Create version snapshot, set to PUBLISHED
+  - unpublishPacket(packetId) - Revert to DRAFT
+  - getPacketVersions(packetId) - View version history
+  - getPublishedPacket(lessonId) - Student access to published packets
+- ✅ **Security Layer**
+  - verifyPacketOwnership() - Teachers must own lesson to manage packets
+  - verifyLessonOwnership() - Lesson ownership verification
+  - verifyStudentLessonAccess() - Students must be enrolled in class with lesson
+  - All 11 server actions protected with ownership checks
+- 🚧 **UI Components** (Pending)
+  - VS Code-style tab bar for packet items
+  - Inline worksheet editing
+  - Inline flashcard editing
+  - Publish/unpublish button in lesson sidebar
+  - Student packet view with download options
+  - RAG chatbot integration to prioritize packet materials
 
 **v2.4 (October 29, 2025)** - Phase 4 Complete (Student Enrollment & Management)
 - ✅ **Student Server Actions** (`app/actions/class.ts`)
