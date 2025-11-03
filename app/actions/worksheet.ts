@@ -182,6 +182,28 @@ export async function getWorksheets(pdfId: string): Promise<GetMaterialsResult> 
   }
 }
 
+export async function updateWorksheet(
+  worksheetId: string,
+  content: WorksheetData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.material.update({
+      where: { id: worksheetId },
+      data: {
+        title: content.title,
+        content: JSON.stringify(content),
+      },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Update worksheet error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update worksheet',
+    };
+  }
+}
+
 export async function deleteWorksheet(worksheetId: string): Promise<{ success: boolean; error?: string }> {
   try {
     await db.material.delete({

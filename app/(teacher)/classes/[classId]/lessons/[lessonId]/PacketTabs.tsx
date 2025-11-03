@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getOrCreatePacket, getPacketWithItems, syncOpenTabs, publishPacket, unpublishPacket } from '@/app/actions/packet';
+import { getOrCreatePacket, getPacketWithItems, removeItemFromPacket, publishPacket, unpublishPacket } from '@/app/actions/packet';
 import { PacketItemType, PacketStatus } from '@prisma/client';
 
 type PacketItem = {
@@ -17,6 +17,7 @@ type PacketTab = {
   id: string;
   type: PacketItemType;
   itemId: string;
+  packetItemId: string; // Database ID of the PacketItem
   title: string;
 };
 
@@ -58,6 +59,7 @@ export default function PacketTabs({ lessonId, activeItemId, onTabChange, trigge
         id: item.itemId,
         type: item.itemType,
         itemId: item.itemId,
+        packetItemId: item.id, // Store the PacketItem database ID for removal
         title: getTabTitle(item.itemType, item.itemData),
       }));
       setTabs(packetTabs);
@@ -75,10 +77,23 @@ export default function PacketTabs({ lessonId, activeItemId, onTabChange, trigge
     return 'Item';
   }
 
-  function closeTab(tabId: string, e: React.MouseEvent) {
+  async function closeTab(packetItemId: string, e: React.MouseEvent) {
     e.stopPropagation();
-    // TODO: Implement remove from packet
-    console.log('Close tab:', tabId);
+
+    if (!confirm('Remove this item from the packet?')) return;
+
+    if (!packetId) {
+      alert('Packet ID not found');
+      return;
+    }
+
+    const result = await removeItemFromPacket(packetId, packetItemId);
+    if (result.success) {
+      // Reload packet to update tabs
+      await loadPacket();
+    } else {
+      alert('Failed to remove item: ' + result.error);
+    }
   }
 
   async function handlePublish() {
@@ -162,8 +177,9 @@ export default function PacketTabs({ lessonId, activeItemId, onTabChange, trigge
             <span className="truncate max-w-[120px]">{tab.title}</span>
 
             <button
-              onClick={(e) => closeTab(tab.id, e)}
+              onClick={(e) => closeTab(tab.packetItemId, e)}
               className="ml-1 hover:bg-base-content/10 rounded p-0.5"
+              title="Remove from packet"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
