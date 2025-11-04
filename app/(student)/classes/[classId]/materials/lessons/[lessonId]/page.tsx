@@ -8,7 +8,11 @@ import { getPublishedPacket } from '@/app/actions/packet';
 import StudentChatbot from './StudentChatbot';
 import StudentPacketTabs from './StudentPacketTabs';
 import { PacketItemType } from '@prisma/client';
-import PDFViewer from '@/app/library/components/PDFViewer';
+import dynamic from 'next/dynamic';
+
+const PDFViewer = dynamic(() => import('@/app/library/components/PDFViewer'), {
+  ssr: false,
+});
 
 type Lesson = {
   id: string;
