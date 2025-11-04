@@ -50,7 +50,7 @@ export default function Navigation({ user }: Props) {
             Classes
           </Link>
           <Link href="/library" className="btn btn-ghost btn-sm">
-            Dashboard
+            Library
           </Link>
         </>
       )}
