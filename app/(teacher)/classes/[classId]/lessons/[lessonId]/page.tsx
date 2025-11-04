@@ -11,6 +11,7 @@ import WorksheetTab from '@/app/library/components/WorksheetTab';
 import FlashcardTab from '@/app/library/components/FlashcardTab';
 import ChatHistoryTab from '@/app/library/components/ChatHistoryTab';
 import StudentChatsTab from './StudentChatsTab';
+import GradesTab from './GradesTab';
 import PacketTabs from './PacketTabs';
 import { autoAddToPacket } from '@/app/actions/packet-utils';
 import { PacketItemType } from '@prisma/client';
@@ -47,7 +48,7 @@ type Lesson = {
   };
 };
 
-type Tab = 'pdf' | 'chat' | 'worksheet' | 'flashcard' | 'history' | 'students';
+type Tab = 'pdf' | 'chat' | 'worksheet' | 'flashcard' | 'history' | 'students' | 'grades';
 
 export default function LessonDetailPage() {
   const params = useParams();
@@ -388,6 +389,20 @@ export default function LessonDetailPage() {
                 </svg>
                 <span>Student Chats</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('grades')}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
+                  activeTab === 'grades'
+                    ? 'bg-primary text-primary-content'
+                    : 'hover:bg-base-300'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <span>Grades</span>
+              </button>
             </div>
           </div>
 
@@ -405,6 +420,11 @@ export default function LessonDetailPage() {
             <div className="flex-1 overflow-hidden">
             {activeTab === 'students' ? (
               <StudentChatsTab
+                classId={classId}
+                lessonId={lessonId}
+              />
+            ) : activeTab === 'grades' ? (
+              <GradesTab
                 classId={classId}
                 lessonId={lessonId}
               />

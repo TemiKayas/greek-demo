@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getLessonDetails } from '@/app/actions/lesson';
 import { getPublishedPacket } from '@/app/actions/packet';
+import { submitWorksheet, getWorksheetSubmission } from '@/app/actions/worksheetSubmission';
 import StudentChatbot from './StudentChatbot';
 import StudentPacketTabs from './StudentPacketTabs';
 import { PacketItemType } from '@prisma/client';
@@ -205,7 +206,12 @@ export default function StudentLessonMaterialsPage() {
                     </div>
                   )}
                   {activeItemType === 'WORKSHEET' && (
-                    <StudentWorksheetViewer worksheet={JSON.parse(activeItemData.content)} />
+                    <StudentWorksheetViewer
+                      worksheet={JSON.parse(activeItemData.content)}
+                      worksheetId={activeItemData.id}
+                      classId={classId}
+                      lessonId={lessonId}
+                    />
                   )}
                   {activeItemType === 'FLASHCARD' && (
                     <StudentFlashcardViewer flashcards={JSON.parse(activeItemData.content)} />
@@ -234,33 +240,100 @@ export default function StudentLessonMaterialsPage() {
   );
 }
 
-// Student Worksheet Viewer (Read-only)
-function StudentWorksheetViewer({ worksheet }: { worksheet: any }) {
+// Student Worksheet Viewer (Interactive with submission)
+function StudentWorksheetViewer({
+  worksheet,
+  worksheetId,
+  classId,
+  lessonId,
+}: {
+  worksheet: any;
+  worksheetId: string;
+  classId: string;
+  lessonId: string;
+}) {
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showAnswers, setShowAnswers] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submission, setSubmission] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSubmission();
+  }, [worksheetId]);
+
+  async function loadSubmission() {
+    setLoading(true);
+    const result = await getWorksheetSubmission(worksheetId, classId);
+    if (result.success && result.data) {
+      setSubmission(result.data);
+      setAnswers(result.data.answers || {});
+    }
+    setLoading(false);
+  }
+
+  async function handleSubmit() {
+    if (Object.keys(answers).length === 0) {
+      alert('Please answer at least one question before submitting.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await submitWorksheet(classId, lessonId, worksheetId, answers);
+
+    if (result.success) {
+      alert(`Submitted! Your score: ${result.data.score.toFixed(1)}%`);
+      await loadSubmission(); // Reload to show updated submission
+    } else {
+      alert('Failed to submit: ' + result.error);
+    }
+    setSubmitting(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto p-6 bg-base-100">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">{worksheet.title}</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAnswers(!showAnswers)}
-              className="btn btn-sm btn-outline"
-            >
-              {showAnswers ? 'Hide Answers' : 'Show Answers'}
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="btn btn-sm btn-primary"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Print
-            </button>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">{worksheet.title}</h2>
+            <div className="flex gap-2">
+              {submission && (
+                <div className="badge badge-lg badge-success gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Score: {submission.score?.toFixed(1)}%
+                </div>
+              )}
+              <button
+                onClick={() => setShowAnswers(!showAnswers)}
+                className="btn btn-sm btn-outline"
+                disabled={!submission}
+              >
+                {showAnswers ? 'Hide Answers' : 'Show Answers'}
+              </button>
+            </div>
           </div>
+
+          {submission && (
+            <div className="alert alert-info">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                Last submitted: {new Date(submission.submittedAt).toLocaleString()}. You can resubmit to update your answers.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Questions */}
@@ -284,7 +357,15 @@ function StudentWorksheetViewer({ worksheet }: { worksheet: any }) {
                           }`}
                         >
                           <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name={`q${index}`} className="radio radio-sm" />
+                            <input
+                              type="radio"
+                              name={`q${index}`}
+                              className="radio radio-sm"
+                              checked={answers[index] === opt}
+                              onChange={() =>
+                                setAnswers(prev => ({ ...prev, [index]: opt }))
+                              }
+                            />
                             <span>{opt}</span>
                           </label>
                         </div>
@@ -296,13 +377,29 @@ function StudentWorksheetViewer({ worksheet }: { worksheet: any }) {
                     <div className="space-y-2 mb-3">
                       <div className={`p-2 rounded ${showAnswers && q.answer === 'True' ? 'bg-success/20 border border-success' : 'bg-base-100'}`}>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name={`q${index}`} className="radio radio-sm" />
+                          <input
+                            type="radio"
+                            name={`q${index}`}
+                            className="radio radio-sm"
+                            checked={answers[index] === 'True'}
+                            onChange={() =>
+                              setAnswers(prev => ({ ...prev, [index]: 'True' }))
+                            }
+                          />
                           <span>True</span>
                         </label>
                       </div>
                       <div className={`p-2 rounded ${showAnswers && q.answer === 'False' ? 'bg-success/20 border border-success' : 'bg-base-100'}`}>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name={`q${index}`} className="radio radio-sm" />
+                          <input
+                            type="radio"
+                            name={`q${index}`}
+                            className="radio radio-sm"
+                            checked={answers[index] === 'False'}
+                            onChange={() =>
+                              setAnswers(prev => ({ ...prev, [index]: 'False' }))
+                            }
+                          />
                           <span>False</span>
                         </label>
                       </div>
@@ -314,17 +411,27 @@ function StudentWorksheetViewer({ worksheet }: { worksheet: any }) {
                       className="textarea textarea-bordered w-full mb-3"
                       rows={q.type === 'short_answer' ? 3 : 1}
                       placeholder="Your answer..."
+                      value={answers[index] || ''}
+                      onChange={e =>
+                        setAnswers(prev => ({ ...prev, [index]: e.target.value }))
+                      }
                     />
                   )}
 
                   {showAnswers && (
                     <div className="mt-3 p-3 bg-success/10 rounded border border-success/30">
-                      <p className="text-sm font-semibold text-success mb-1">Answer:</p>
+                      <p className="text-sm font-semibold text-success mb-1">Correct Answer:</p>
                       <p className="text-sm">{q.answer}</p>
                       {q.explanation && (
                         <>
                           <p className="text-sm font-semibold text-success mt-2 mb-1">Explanation:</p>
                           <p className="text-sm text-base-content/70">{q.explanation}</p>
+                        </>
+                      )}
+                      {answers[index] && (
+                        <>
+                          <p className="text-sm font-semibold text-primary mt-2 mb-1">Your Answer:</p>
+                          <p className="text-sm">{answers[index]}</p>
                         </>
                       )}
                     </div>
@@ -333,6 +440,17 @@ function StudentWorksheetViewer({ worksheet }: { worksheet: any }) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleSubmit}
+            className={`btn btn-primary btn-lg ${submitting ? 'loading' : ''}`}
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : submission ? 'Resubmit Worksheet' : 'Submit Worksheet'}
+          </button>
         </div>
       </div>
     </div>

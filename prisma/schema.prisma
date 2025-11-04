@@ -31,10 +31,11 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  pdfs              PDF[]
-  teachingClasses   Class[]              @relation("TeacherClasses")
-  classMemberships  ClassMembership[]
-  chatConversations ChatConversation[]
+  pdfs                  PDF[]
+  teachingClasses       Class[]                @relation("TeacherClasses")
+  classMemberships      ClassMembership[]
+  chatConversations     ChatConversation[]
+  worksheetSubmissions  WorksheetSubmission[]
 
   @@index([email])
   @@index([role])
@@ -54,12 +55,13 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  teacher           User                @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
-  memberships       ClassMembership[]
-  inviteCodes       InviteCode[]
-  sharedMaterials   ClassMaterial[]
-  chatConversations ChatConversation[]
-  lessons           LessonClass[]       // Lessons shared with this class
+  teacher              User                    @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  memberships          ClassMembership[]
+  inviteCodes          InviteCode[]
+  sharedMaterials      ClassMaterial[]
+  chatConversations    ChatConversation[]
+  lessons              LessonClass[]           // Lessons shared with this class
+  worksheetSubmissions WorksheetSubmission[]
 
   @@index([teacherId])
   @@index([isActive])
@@ -112,11 +114,12 @@ model Lesson {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  classes           LessonClass[]        // Classes this lesson is shared with
-  pdfs              PDF[]                // PDFs uploaded for this lesson
-  materials         Material[]           // Generated materials for this lesson
-  chatConversations ChatConversation[]   // Student chats about this lesson
-  packet            Packet?              // Digital packet for this lesson
+  classes              LessonClass[]           // Classes this lesson is shared with
+  pdfs                 PDF[]                   // PDFs uploaded for this lesson
+  materials            Material[]              // Generated materials for this lesson
+  chatConversations    ChatConversation[]      // Student chats about this lesson
+  packet               Packet?                 // Digital packet for this lesson
+  worksheetSubmissions WorksheetSubmission[]
 
   @@index([creatorId])
   @@index([createdAt])
@@ -265,6 +268,32 @@ model ChatMessage {
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+}
+
+// ============================================================================
+// WORKSHEET SUBMISSIONS & GRADES
+// ============================================================================
+
+model WorksheetSubmission {
+  id          String   @id @default(cuid())
+  userId      String   // Student who submitted
+  classId     String   // Class context
+  lessonId    String   // Lesson context
+  worksheetId String   // Material ID of the worksheet
+  answers     String   @db.Text // JSON: Student's answers
+  score       Float?   // Auto-calculated score (0-100)
+  totalPoints Int      // Total possible points
+  submittedAt DateTime @default(now())
+
+  // Relations
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class    Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, worksheetId, classId]) // One submission per student per worksheet per class
+  @@index([classId, lessonId]) // Get all submissions for a lesson in a class
+  @@index([userId, classId]) // Get all submissions by a student in a class
+  @@index([worksheetId]) // Get all submissions for a specific worksheet
 }
 
 // ============================================================================
