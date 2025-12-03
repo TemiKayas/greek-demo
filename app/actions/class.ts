@@ -110,7 +110,7 @@ export async function getTeacherClasses(): Promise<ActionResult<any[]>> {
         _count: {
           select: {
             memberships: true,
-            sharedMaterials: true,
+            files: true,
           },
         },
         inviteCodes: {
@@ -180,7 +180,7 @@ export async function getClassDetails(classId: string): Promise<ActionResult<any
         },
         _count: {
           select: {
-            sharedMaterials: true,
+            files: true,
             chatConversations: true,
           },
         },
@@ -586,7 +586,7 @@ export async function getStudentClasses(): Promise<ActionResult<any[]>> {
             },
             _count: {
               select: {
-                sharedMaterials: true,
+                files: true,
                 memberships: true,
               },
             },
@@ -612,84 +612,6 @@ export async function getStudentClasses(): Promise<ActionResult<any[]>> {
     return {
       success: false,
       error: 'Failed to fetch classes',
-    };
-  }
-}
-
-/**
- * Get all materials shared with a specific class
- */
-export async function getClassMaterials(classId: string): Promise<ActionResult<any[]>> {
-  try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return { success: false, error: 'Not authenticated' };
-    }
-
-    // Verify student is a member of this class OR teacher owns this class
-    const isTeacher =
-      session.user.role === 'TEACHER' &&
-      (await db.class.findFirst({
-        where: {
-          id: classId,
-          teacherId: session.user.id,
-        },
-      }));
-
-    const isStudent =
-      session.user.role === 'STUDENT' &&
-      (await db.classMembership.findUnique({
-        where: {
-          classId_userId: {
-            classId,
-            userId: session.user.id,
-          },
-        },
-      }));
-
-    if (!isTeacher && !isStudent) {
-      return { success: false, error: 'Not authorized to view this class' };
-    }
-
-    // Get all materials shared with this class
-    const sharedMaterials = await db.classMaterial.findMany({
-      where: {
-        classId,
-      },
-      include: {
-        material: {
-          include: {
-            pdf: {
-              select: {
-                id: true,
-                fileName: true,
-                blobUrl: true,
-                createdAt: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        sharedAt: 'desc',
-      },
-    });
-
-    const materials = sharedMaterials.map((sm) => ({
-      ...sm.material,
-      sharedAt: sm.sharedAt,
-    }));
-
-    return {
-      success: true,
-      data: materials,
-    };
-  } catch (error) {
-    console.error('Get class materials error:', error);
-    return {
-      success: false,
-      error: 'Failed to fetch materials',
     };
   }
 }

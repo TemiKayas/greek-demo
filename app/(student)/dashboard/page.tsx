@@ -17,7 +17,7 @@ type StudentClass = {
     email: string;
   };
   _count: {
-    sharedMaterials: number;
+    files: number;
     memberships: number;
   };
 };
@@ -216,7 +216,7 @@ export default function StudentDashboardPage() {
                         />
                       </svg>
                       <span className="text-base-content/70">
-                        {cls._count.sharedMaterials} materials
+                        {cls._count.files} files
                       </span>
                     </div>
 
@@ -227,10 +227,10 @@ export default function StudentDashboardPage() {
 
                   <div className="card-actions justify-end mt-6">
                     <Link
-                      href={`/classes/${cls.id}/materials`}
+                      href={`/classes/${cls.id}`}
                       className="btn btn-primary btn-sm"
                     >
-                      View Materials
+                      Open Class
                     </Link>
                   </div>
                 </div>

@@ -3,12 +3,14 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
+  extensions = [vector]
 }
 
 // ============================================================================
@@ -31,11 +33,9 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  pdfs                  PDF[]
-  teachingClasses       Class[]                @relation("TeacherClasses")
-  classMemberships      ClassMembership[]
-  chatConversations     ChatConversation[]
-  worksheetSubmissions  WorksheetSubmission[]
+  teachingClasses   Class[]              @relation("TeacherClasses")
+  classMemberships  ClassMembership[]
+  chatConversations ChatConversation[]
 
   @@index([email])
   @@index([role])
@@ -55,13 +55,11 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  teacher              User                    @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
-  memberships          ClassMembership[]
-  inviteCodes          InviteCode[]
-  sharedMaterials      ClassMaterial[]
-  chatConversations    ChatConversation[]
-  lessons              LessonClass[]           // Lessons shared with this class
-  worksheetSubmissions WorksheetSubmission[]
+  teacher           User                 @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  memberships       ClassMembership[]
+  inviteCodes       InviteCode[]
+  files             ClassFile[]
+  chatConversations ChatConversation[]
 
   @@index([teacherId])
   @@index([isActive])
@@ -101,160 +99,76 @@ model InviteCode {
 }
 
 // ============================================================================
-// LESSON MANAGEMENT (Reusable lessons)
+// FILE MANAGEMENT & VECTORIZATION
 // ============================================================================
 
-model Lesson {
-  id          String   @id @default(cuid())
-  creatorId   String   // Teacher who created it
-  name        String
-  description String?
-  isPublic    Boolean  @default(false) // Future: allow sharing with other teachers
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  classes              LessonClass[]           // Classes this lesson is shared with
-  pdfs                 PDF[]                   // PDFs uploaded for this lesson
-  materials            Material[]              // Generated materials for this lesson
-  chatConversations    ChatConversation[]      // Student chats about this lesson
-  packet               Packet?                 // Digital packet for this lesson
-  worksheetSubmissions WorksheetSubmission[]
-
-  @@index([creatorId])
-  @@index([createdAt])
+enum FileProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
-model LessonClass {
-  id        String   @id @default(cuid())
-  lessonId  String
-  classId   String
-  sharedAt  DateTime @default(now())
-  sharedBy  String   // Teacher user ID
-  order     Int      @default(0) // For ordering lessons within a class
+model ClassFile {
+  id           String               @id @default(cuid())
+  classId      String
+  fileName     String
+  fileType     String               // "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", etc.
+  fileSize     Int                  // bytes
+  blobUrl      String               // Vercel Blob URL
+  uploadedBy   String               // userId
+  status       FileProcessingStatus @default(PENDING)
+  errorMessage String?              // if processing fails
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   // Relations
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class  Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  chunks FileChunk[]
 
-  @@unique([lessonId, classId])
-  @@index([classId, order]) // Get all lessons in order for a class
-  @@index([lessonId])
-}
-
-// ============================================================================
-// PDF & CONTENT PROCESSING
-// ============================================================================
-
-model PDF {
-  id         String   @id @default(cuid())
-  userId     String
-  lessonId   String?  // Optional: Lesson this PDF belongs to
-  filename   String
-  blobUrl    String   // Vercel Blob storage URL
-  fileSize   Int
-  mimeType   String   @default("application/pdf")
-  uploadedAt DateTime @default(now())
-
-  // Relations
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson            Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  processedContent  ProcessedContent?
-  materials         Material[]
-  chatConversations ChatConversation[]
-
-  @@index([userId])
-  @@index([lessonId])
-}
-
-model ProcessedContent {
-  id            String   @id @default(cuid())
-  pdfId         String   @unique
-  extractedText String   @db.Text // Use Text for large content
-  textLength    Int
-  processedAt   DateTime @default(now())
-
-  // Relations
-  pdf PDF @relation(fields: [pdfId], references: [id], onDelete: Cascade)
-}
-
-// ============================================================================
-// GENERATED MATERIALS (Worksheets, Flashcards, etc.)
-// ============================================================================
-
-enum MaterialType {
-  WORKSHEET
-  FLASHCARD
-  QUIZ
-  SUMMARY
-}
-
-model Material {
-  id        String       @id @default(cuid())
-  pdfId     String
-  lessonId  String?      // Optional: Lesson this material belongs to
-  userId    String       // Teacher who generated it
-  type      MaterialType
-  title     String
-  content   String       @db.Text // JSON content for the material
-  createdAt DateTime     @default(now())
-
-  // Relations
-  pdf           PDF             @relation(fields: [pdfId], references: [id], onDelete: Cascade)
-  lesson        Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  sharedWith    ClassMaterial[]
-  conversations ChatConversation[]
-
-  @@index([pdfId])
-  @@index([lessonId])
-  @@index([userId])
-  @@index([type])
-}
-
-model ClassMaterial {
-  id         String   @id @default(cuid())
-  classId    String
-  materialId String
-  sharedAt   DateTime @default(now())
-  sharedBy   String   // Teacher user ID
-
-  // Relations
-  class    Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-
-  @@unique([classId, materialId])
   @@index([classId])
-  @@index([materialId])
+  @@index([status])
+  @@index([uploadedBy])
+}
+
+model FileChunk {
+  id         String                              @id @default(cuid())
+  fileId     String
+  classId    String                              // Denormalized for faster queries
+  content    String                              @db.Text // The actual text chunk
+  embedding  Unsupported("vector(1536)")?        // OpenAI text-embedding-3-small dimension
+  chunkIndex Int                                 // Order within file
+  metadata   Json?                               // Page number, section, etc.
+  createdAt  DateTime                            @default(now())
+
+  // Relations
+  file ClassFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+  @@index([classId])
+  // Vector index will be created with raw SQL after migration
 }
 
 // ============================================================================
-// CHAT CONVERSATIONS (with Class & Material Context)
+// CHAT CONVERSATIONS (Simplified - Class Context Only)
 // ============================================================================
 
 model ChatConversation {
-  id          String   @id @default(cuid())
-  userId      String   // User who started the chat
-  classId     String?  // Optional: Which class they're in (null for teacher library)
-  lessonId    String?  // Optional: Which lesson they're viewing (for students)
-  pdfId       String?  // Optional: PDF they were viewing
-  materialId  String?  // Optional: Material they were viewing
-  title       String   // Auto-generated or user-provided
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String   // Student who started the chat
+  classId   String   // Which class they're in
+  title     String   @default("New Conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  class    Class?        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  lesson   Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  pdf      PDF?          @relation(fields: [pdfId], references: [id], onDelete: SetNull)
-  material Material?     @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  class    Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
 
   @@index([userId])
   @@index([classId, createdAt]) // For teacher insights
-  @@index([classId, userId]) // Get all chats by student in class
-  @@index([lessonId, classId]) // Get all chats about a lesson in a class
-  @@index([materialId, classId]) // Get all chats about a material
+  @@index([userId, classId]) // Get all chats by student in class
 }
 
 model ChatMessage {
@@ -268,108 +182,4 @@ model ChatMessage {
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
-}
-
-// ============================================================================
-// WORKSHEET SUBMISSIONS & GRADES
-// ============================================================================
-
-model WorksheetSubmission {
-  id          String   @id @default(cuid())
-  userId      String   // Student who submitted
-  classId     String   // Class context
-  lessonId    String   // Lesson context
-  worksheetId String   // Material ID of the worksheet
-  answers     String   @db.Text // JSON: Student's answers
-  score       Float?   // Auto-calculated score (0-100)
-  totalPoints Int      // Total possible points
-  submittedAt DateTime @default(now())
-
-  // Relations
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  class    Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
-  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, worksheetId, classId]) // One submission per student per worksheet per class
-  @@index([classId, lessonId]) // Get all submissions for a lesson in a class
-  @@index([userId, classId]) // Get all submissions by a student in a class
-  @@index([worksheetId]) // Get all submissions for a specific worksheet
-}
-
-// ============================================================================
-// DIGITAL PACKET SYSTEM
-// ============================================================================
-
-enum PacketStatus {
-  DRAFT
-  PUBLISHED
-}
-
-enum PacketItemType {
-  PDF
-  FLASHCARD
-  WORKSHEET
-}
-
-model Packet {
-  id          String       @id @default(cuid())
-  lessonId    String       @unique // One packet per lesson
-  status      PacketStatus @default(DRAFT)
-  publishedAt DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  // Relations
-  lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  items    PacketItem[]
-  versions PacketVersion[]
-  openTabs PacketOpenTab[]
-
-  @@index([lessonId])
-  @@index([status])
-}
-
-model PacketItem {
-  id            String         @id @default(cuid())
-  packetId      String
-  itemType      PacketItemType
-  itemId        String // ID of PDF, Flashcard (Material), or Worksheet (Material)
-  order         Int
-  editedContent String?        @db.Text // JSON for edited worksheets/flashcards
-  createdAt     DateTime       @default(now())
-
-  // Relations
-  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
-
-  @@index([packetId, order])
-  @@index([itemType, itemId]) // For querying specific items
-}
-
-model PacketVersion {
-  id          String   @id @default(cuid())
-  packetId    String
-  version     Int
-  snapshot    String   @db.Text // JSON: Complete packet state at time of publish
-  publishedAt DateTime @default(now())
-  publishedBy String // userId of teacher who published
-
-  // Relations
-  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
-
-  @@unique([packetId, version])
-  @@index([packetId, version])
-}
-
-model PacketOpenTab {
-  id             String         @id @default(cuid())
-  packetId       String
-  itemType       PacketItemType
-  itemId         String
-  order          Int
-  lastAccessedAt DateTime       @default(now())
-
-  // Relations
-  packet Packet @relation(fields: [packetId], references: [id], onDelete: Cascade)
-
-  @@index([packetId, order])
 }

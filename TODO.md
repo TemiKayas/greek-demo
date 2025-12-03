@@ -441,4 +441,20 @@ guided chatbots, give them information that theyll need, then put them into a so
 
 conversation from the greek games website, but generated consistenantly on the material we gave it
 
-audio player + transcriber to store context as well 
+audio player + transcriber to store context as well
+
+11/6
+Progressive questions IE MC -> short answer -> long asnser ect, add prompts for worksheet generation, want to repate the same stuff
+just more autonomy as you go on, asking them to do more 
+
+Allow them to reopen or edit worksheets. 
+
+give metrics for waht percent of the class got wrong or right, where are they struggling
+
+image generation, along with content generation to go with the image. 
+
+mp3 playing!! 
+
+Anki flash card functions for flash cards. 
+
+how can I accodmadate their teaching philosphies
