@@ -58,7 +58,10 @@ export function ChatInterface({ classId }: ChatInterfaceProps) {
     // Load existing messages
     const messagesResult = await getConversationMessages(convId);
     if (messagesResult.success) {
-      setMessages(messagesResult.data);
+      setMessages(messagesResult.data.map(msg => ({
+        ...msg,
+        role: msg.role as 'user' | 'assistant',
+      })));
     }
 
     setLoading(false);

@@ -2,9 +2,10 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { searchClassVectors } from '@/lib/vectorSearch';
+import { ragSearch } from '@/lib/vectorSearch';
 import { chatWithContext } from '@/lib/openai';
 import { revalidatePath } from 'next/cache';
+import type { ChatMessage } from '@prisma/client';
 
 // Types
 type ActionResult<T = void> =
@@ -20,15 +21,36 @@ interface MessageWithSources {
     fileName: string;
     fileId: string;
     similarity: number;
+    pageNumber?: number;
+    section?: string;
   }[];
 }
 
-// Configuration for RAG
+interface ConversationWithDetails {
+  id: string;
+  userId: string;
+  classId: string;
+  title: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  class: {
+    id: string;
+    name: string;
+  };
+  messages: ChatMessage[];
+  _count: {
+    messages: number;
+  };
+}
+
+// Configuration for RAG 2.0
 const RAG_CONFIG = {
-  maxChunks: 10, // Retrieve top 10 chunks (balanced approach)
-  minSimilarity: 0.5, // 0.5 minimum similarity (balanced relevance)
+  initialK: 30, // Initial retrieval from hybrid search (cast wide net)
+  finalK: 5, // Final number of results after reranking (best quality)
+  vectorWeight: 0.7, // Weight for vector similarity (semantic understanding)
+  bm25Weight: 0.3, // Weight for BM25 (keyword matching)
+  useReranking: true, // Enable cross-encoder reranking for better precision
   conversationHistoryLimit: 10, // Keep last 10 messages
-  maxTokensPerChunk: 1000, // Estimated tokens per chunk
 };
 
 /**
@@ -156,17 +178,22 @@ export async function sendChatMessage(
       },
     });
 
-    console.log(`[RAG Chat] Searching for relevant content...`);
+    console.log(`[RAG 2.0] Starting enhanced retrieval (Hybrid + Reranking)...`);
 
-    // Perform vector search to find relevant chunks
-    const searchResults = await searchClassVectors(
+    // Perform RAG 2.0 search: Hybrid (Vector + BM25) + Reranking + Parent-Child
+    const searchResults = await ragSearch(
       conversation.classId,
       message,
-      RAG_CONFIG.maxChunks,
-      RAG_CONFIG.minSimilarity
+      {
+        initialK: RAG_CONFIG.initialK,
+        finalK: RAG_CONFIG.finalK,
+        vectorWeight: RAG_CONFIG.vectorWeight,
+        bm25Weight: RAG_CONFIG.bm25Weight,
+        useReranking: RAG_CONFIG.useReranking,
+      }
     );
 
-    console.log(`[RAG Chat] Found ${searchResults.length} relevant chunks`);
+    console.log(`[RAG 2.0] Retrieved ${searchResults.length} high-quality chunks`);
 
     // Check if we have any relevant content
     if (searchResults.length === 0) {
@@ -186,7 +213,7 @@ Please try asking your teacher directly, or wait for more materials to be upload
         },
       });
 
-      revalidatePath(`/classes/${conversation.classId}`);
+      revalidatePath(`/class/${conversation.classId}`);
 
       return {
         success: true,
@@ -200,12 +227,21 @@ Please try asking your teacher directly, or wait for more materials to be upload
       };
     }
 
-    // Build context from search results
-    const context = searchResults.map((result, index) => {
-      return `[Source: ${result.fileName}]\n${result.content}`;
+    // Build context from PARENT chunks (hierarchical retrieval)
+    // If parent exists, use it for full context. Otherwise, fall back to child.
+    const context = searchResults.map((result) => {
+      const contentToUse = result.parentContent || result.content;
+      return contentToUse;
     });
 
-    console.log(`[RAG Chat] Context size: ~${context.join('').length} characters`);
+    // Build source metadata for citations
+    const sourceFiles = searchResults.map((result) => ({
+      fileName: result.fileName,
+      pageNumber: result.pageNumber,
+    }));
+
+    console.log(`[RAG 2.0] Context: ${searchResults.length} chunks, ~${context.join('').length} chars total`);
+    console.log(`[RAG 2.0] Using ${searchResults.filter(r => r.parentContent).length}/${searchResults.length} parent chunks for context`);
 
     // Get conversation history (reverse to chronological order)
     const history = conversation.messages
@@ -215,12 +251,12 @@ Please try asking your teacher directly, or wait for more materials to be upload
         content: msg.content,
       }));
 
-    console.log(`[RAG Chat] Using ${history.length} previous messages for context`);
+    console.log(`[RAG 2.0] Using ${history.length} previous messages for continuity`);
 
-    // Generate AI response
-    const aiResponse = await chatWithContext(message, context, history);
+    // Generate AI response with enhanced context and citations
+    const aiResponse = await chatWithContext(message, context, sourceFiles, history);
 
-    console.log(`[RAG Chat] Generated response (${aiResponse.length} characters)`);
+    console.log(`[RAG 2.0] Generated response (${aiResponse.length} characters)`);
 
     // Save AI message
     const aiMessage = await db.chatMessage.create({
@@ -231,11 +267,13 @@ Please try asking your teacher directly, or wait for more materials to be upload
       },
     });
 
-    // Prepare sources for frontend
+    // Prepare sources for frontend (with page numbers and sections)
     const sources = searchResults.map((result) => ({
       fileName: result.fileName,
       fileId: result.fileId,
       similarity: result.similarity,
+      pageNumber: result.pageNumber,
+      section: result.section,
     }));
 
     // Update conversation timestamp
@@ -272,7 +310,7 @@ Please try asking your teacher directly, or wait for more materials to be upload
  */
 export async function getConversationMessages(
   conversationId: string
-): Promise<ActionResult<any[]>> {
+): Promise<ActionResult<ChatMessage[]>> {
   try {
     const session = await auth();
 
@@ -324,7 +362,7 @@ export async function getConversationMessages(
  * Get all conversations for a student
  * @returns List of conversations with latest message
  */
-export async function getStudentConversations(): Promise<ActionResult<any[]>> {
+export async function getStudentConversations(): Promise<ActionResult<ConversationWithDetails[]>> {
   try {
     const session = await auth();
 

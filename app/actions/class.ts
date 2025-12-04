@@ -5,6 +5,84 @@ import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { generateUniqueInviteCode } from '@/lib/utils/invite-code';
 import { revalidatePath } from 'next/cache';
+import type { Prisma } from '@prisma/client';
+
+// Type definitions for complex query returns
+type TeacherClassData = Prisma.ClassGetPayload<{
+  include: {
+    _count: {
+      select: {
+        memberships: true;
+        files: true;
+      };
+    };
+    inviteCodes: true;
+  };
+}>;
+
+type ClassDetailsData = Prisma.ClassGetPayload<{
+  include: {
+    teacher: {
+      select: {
+        id: true;
+        name: true;
+        email: true;
+      };
+    };
+    memberships: {
+      include: {
+        user: {
+          select: {
+            id: true;
+            name: true;
+            email: true;
+            createdAt: true;
+          };
+        };
+      };
+    };
+    inviteCodes: {
+      where: {
+        isActive: true;
+      };
+      orderBy: {
+        createdAt: 'desc';
+      };
+    };
+    files: {
+      orderBy: {
+        createdAt: 'desc';
+      };
+    };
+    _count: {
+      select: {
+        memberships: true;
+        files: true;
+        chatConversations: true;
+      };
+    };
+  };
+}>;
+
+type StudentClassData = Prisma.ClassGetPayload<{
+  include: {
+    teacher: {
+      select: {
+        id: true;
+        name: true;
+        email: true;
+      };
+    };
+    _count: {
+      select: {
+        files: true;
+        memberships: true;
+      };
+    };
+  };
+}> & {
+  joinedAt: Date;
+};
 
 // Validation schemas
 const createClassSchema = z.object({
@@ -94,7 +172,7 @@ export async function createClass(formData: FormData): Promise<ActionResult<{ cl
 /**
  * Get all classes for the current teacher
  */
-export async function getTeacherClasses(): Promise<ActionResult<any[]>> {
+export async function getTeacherClasses(): Promise<ActionResult<TeacherClassData[]>> {
   try {
     const session = await auth();
 
@@ -139,7 +217,7 @@ export async function getTeacherClasses(): Promise<ActionResult<any[]>> {
 /**
  * Get class details including students
  */
-export async function getClassDetails(classId: string): Promise<ActionResult<any>> {
+export async function getClassDetails(classId: string): Promise<ActionResult<ClassDetailsData>> {
   try {
     const session = await auth();
 
@@ -178,8 +256,14 @@ export async function getClassDetails(classId: string): Promise<ActionResult<any
             createdAt: 'desc',
           },
         },
+        files: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
         _count: {
           select: {
+            memberships: true,
             files: true,
             chatConversations: true,
           },
@@ -562,7 +646,7 @@ export async function joinClassWithCode(code: string): Promise<ActionResult<{ cl
 /**
  * Get all classes the current student is enrolled in
  */
-export async function getStudentClasses(): Promise<ActionResult<any[]>> {
+export async function getStudentClasses(): Promise<ActionResult<StudentClassData[]>> {
   try {
     const session = await auth();
 

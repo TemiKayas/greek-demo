@@ -227,7 +227,7 @@ export default function StudentDashboardPage() {
 
                   <div className="card-actions justify-end mt-6">
                     <Link
-                      href={`/classes/${cls.id}`}
+                      href={`/class/${cls.id}`}
                       className="btn btn-primary btn-sm"
                     >
                       Open Class

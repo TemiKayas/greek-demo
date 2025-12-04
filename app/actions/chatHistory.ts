@@ -66,7 +66,7 @@ export async function getClassChatHistory(
       orderBy: { createdAt: 'desc' },
     });
 
-    const parsedConversations = conversations.map(conv => ({
+    const parsedConversations: ChatConversationData[] = conversations.map(conv => ({
       ...conv,
       messages: conv.messages.map(m => ({
         role: m.role as 'user' | 'assistant',
@@ -76,7 +76,7 @@ export async function getClassChatHistory(
 
     return {
       success: true,
-      data: parsedConversations as any,
+      data: parsedConversations,
     };
   } catch (error) {
     console.error('Error fetching class chat history:', error);

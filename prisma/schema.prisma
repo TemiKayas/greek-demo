@@ -131,22 +131,43 @@ model ClassFile {
   @@index([uploadedBy])
 }
 
+enum ChunkType {
+  PARENT  // Large context chunks (2000-4000 tokens)
+  CHILD   // Search chunks (256-512 tokens)
+}
+
 model FileChunk {
   id         String                              @id @default(cuid())
   fileId     String
   classId    String                              // Denormalized for faster queries
   content    String                              @db.Text // The actual text chunk
-  embedding  Unsupported("vector(1536)")?        // OpenAI text-embedding-3-small dimension
+  embedding  Unsupported("vector(1536)")?        // OpenAI text-embedding-3-small dimension (pgvector max: 2000)
   chunkIndex Int                                 // Order within file
-  metadata   Json?                               // Page number, section, etc.
+  chunkType  ChunkType                           @default(CHILD) // PARENT or CHILD
+  parentId   String?                             // Reference to parent chunk if this is a CHILD
+
+  // Enhanced metadata for better retrieval
+  pageNumber Int?                                // PDF page number
+  section    String?                             // Chapter/section title
+  topic      String?                             // Auto-extracted topic tags
+  hasImages  Boolean                             @default(false) // Contains image descriptions
+  imageDesc  String?                             @db.Text // GPT-4o generated image descriptions
+
+  metadata   Json?                               // Additional flexible metadata
   createdAt  DateTime                            @default(now())
 
   // Relations
-  file ClassFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file         ClassFile   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  parent       FileChunk?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
+  children     FileChunk[] @relation("ParentChild")
 
   @@index([fileId])
   @@index([classId])
+  @@index([parentId])
+  @@index([chunkType])
+  @@index([classId, chunkType]) // Fast queries for child chunks in a class
   // Vector index will be created with raw SQL after migration
+  // Full-text search index for BM25 will be added via raw SQL
 }
 
 // ============================================================================

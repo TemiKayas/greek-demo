@@ -11,13 +11,21 @@ type Class = {
   description: string | null;
   isActive: boolean;
   createdAt: Date;
+  updatedAt: Date;
+  teacherId: string;
   _count: {
     memberships: number;
-    sharedMaterials: number;
+    files: number;
   };
   inviteCodes: Array<{
     id: string;
+    classId: string;
     code: string;
+    isActive: boolean;
+    expiresAt: Date | null;
+    createdAt: Date;
+    createdBy: string | null;
+    usedCount: number;
   }>;
 };
 
@@ -172,9 +180,9 @@ export default function ClassesPage() {
 
                   <div className="flex gap-4 mt-2 text-sm">
                     <div className="stat-value text-2xl">
-                      {cls._count.sharedMaterials}
+                      {cls._count.files}
                     </div>
-                    <div className="stat-desc">materials</div>
+                    <div className="stat-desc">files</div>
                   </div>
 
                   <div className="card-actions justify-between mt-6">

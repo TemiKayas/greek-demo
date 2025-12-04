@@ -38,7 +38,7 @@ export function ChatHistoryView({ classId }: ChatHistoryViewProps) {
     setLoading(true);
     const result = await getClassChatHistory(classId);
     if (result.success) {
-      setConversations(result.data as any);
+      setConversations(result.data as Conversation[]);
     }
     setLoading(false);
   }

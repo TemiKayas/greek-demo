@@ -1,6 +1,5 @@
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
 export default auth((req) => {
   const { nextUrl } = req;
@@ -16,15 +15,12 @@ export default auth((req) => {
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
   // Protected route patterns
-  // Students can access /classes/[id]/materials/* but not other /classes routes
-  const isStudentClassMaterialsRoute = /^\/classes\/[^/]+\/materials/.test(nextUrl.pathname);
-
-  const isTeacherRoute = (nextUrl.pathname.startsWith('/classes') && !isStudentClassMaterialsRoute) ||
+  const isTeacherRoute = nextUrl.pathname.startsWith('/classes') ||
                          nextUrl.pathname.startsWith('/lessons') ||
                          nextUrl.pathname.startsWith('/library');
   const isStudentRoute = nextUrl.pathname.startsWith('/dashboard') ||
                          nextUrl.pathname.startsWith('/history') ||
-                         isStudentClassMaterialsRoute;
+                         nextUrl.pathname.startsWith('/class/');
 
   // If user is already logged in and tries to access auth pages, redirect to appropriate dashboard
   if (isLoggedIn && isAuthRoute) {
@@ -57,7 +53,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-}) as any;
+});
 
 export const config = {
   matcher: [

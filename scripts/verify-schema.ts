@@ -1,11 +1,24 @@
 import { db } from '../lib/db';
 
+interface TableRow {
+  table_name: string;
+}
+
+interface IndexRow {
+  indexname: string;
+  indexdef: string;
+}
+
+interface CountRow {
+  count: bigint;
+}
+
 async function verifySchema() {
   try {
     console.log('Verifying database schema...\n');
 
     // Get all tables
-    const tables = await db.$queryRawUnsafe<any[]>(`
+    const tables = await db.$queryRawUnsafe<TableRow[]>(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
@@ -76,7 +89,7 @@ async function verifySchema() {
 
     // Check FileChunk indexes
     console.log('\n🔍 FileChunk indexes:');
-    const indexes = await db.$queryRawUnsafe<any[]>(`
+    const indexes = await db.$queryRawUnsafe<IndexRow[]>(`
       SELECT indexname, indexdef
       FROM pg_indexes
       WHERE tablename = 'FileChunk';
@@ -90,7 +103,7 @@ async function verifySchema() {
     console.log('\n📈 Record counts:');
     for (const table of expectedTables) {
       if (actualTableNames.includes(table)) {
-        const result = await db.$queryRawUnsafe<any[]>(
+        const result = await db.$queryRawUnsafe<CountRow[]>(
           `SELECT COUNT(*) as count FROM "${table}";`
         );
         console.log(`  ${table}: ${result[0].count} records`);

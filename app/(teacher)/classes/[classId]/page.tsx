@@ -20,6 +20,8 @@ type ClassDetails = {
   description: string | null;
   isActive: boolean;
   createdAt: Date;
+  updatedAt: Date;
+  teacherId: string;
   teacher: {
     id: string;
     name: string;
@@ -27,12 +29,14 @@ type ClassDetails = {
   };
   memberships: Array<{
     id: string;
+    role: string;
+    classId: string;
+    userId: string;
     joinedAt: Date;
     user: {
       id: string;
       name: string;
       email: string;
-      createdAt: Date;
     };
   }>;
   inviteCodes: Array<{
@@ -42,8 +46,23 @@ type ClassDetails = {
     expiresAt: Date | null;
     createdAt: Date;
     usedCount: number;
+    classId: string;
+    createdBy: string | null;
+  }>;
+  files: Array<{
+    id: string;
+    classId: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    blobUrl: string;
+    uploadedBy: string;
+    status: string;
+    errorMessage: string | null;
+    createdAt: Date;
   }>;
   _count: {
+    memberships: number;
     files: number;
     chatConversations: number;
   };

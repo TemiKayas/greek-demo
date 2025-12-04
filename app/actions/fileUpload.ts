@@ -4,14 +4,34 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { put, del } from '@vercel/blob';
 import { extractText } from '@/lib/extractors/text-extractor';
-import { chunkText } from '@/lib/chunking/text-chunker';
-import { embedBatch } from '@/lib/openai';
+import { extractPDFWithPages, detectSectionHeading } from '@/lib/extractors/pdf-extractor';
+import { createHierarchicalChunks, flattenChildChunks } from '@/lib/chunking/hierarchical-chunker';
+import { embedBatch, extractImageDescription } from '@/lib/openai';
 import { revalidatePath } from 'next/cache';
+import type { Prisma } from '@prisma/client';
 
 // Types
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+type ClassFileData = Prisma.ClassFileGetPayload<{
+  select: {
+    id: true;
+    fileName: true;
+    fileType: true;
+    fileSize: true;
+    blobUrl: true;
+    status: true;
+    errorMessage: true;
+    createdAt: true;
+    _count: {
+      select: {
+        chunks: true;
+      };
+    };
+  };
+}>;
 
 /**
  * Upload a file to a class and process it in the background
@@ -68,11 +88,15 @@ export async function uploadClassFile(
       };
     }
 
+    console.log(`[Upload] Starting upload for ${file.name}`);
+
     // Upload to Vercel Blob
     const blob = await put(`class-files/${classId}/${file.name}`, file, {
       access: 'public',
       addRandomSuffix: true,
     });
+
+    console.log(`[Upload] Blob uploaded successfully: ${blob.url}`);
 
     // Create file record in database
     const classFile = await db.classFile.create({
@@ -87,6 +111,8 @@ export async function uploadClassFile(
       },
     });
 
+    console.log(`[Upload] Database record created: ${classFile.id}`);
+
     // Start background processing (non-blocking)
     processFileInBackground(classFile.id).catch((error) => {
       console.error('Background processing error:', error);
@@ -94,27 +120,156 @@ export async function uploadClassFile(
 
     revalidatePath(`/classes/${classId}`);
 
+    console.log(`[Upload] Successfully completed upload for ${file.name}`);
+
     return {
       success: true,
       data: { fileId: classFile.id },
     };
   } catch (error) {
-    console.error('Upload file error:', error);
+    console.error('[Upload] Upload file error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return {
       success: false,
-      error: 'Failed to upload file. Please try again.',
+      error: `Failed to upload file: ${errorMessage}`,
     };
   }
 }
 
 /**
- * Process file in background: extract text, chunk, embed, store
+ * Upload multiple files to a class and process them in the background
+ * @param classId - Class ID to upload files to
+ * @param formData - Form data containing the files
+ * @returns Array of file IDs and any errors
+ */
+export async function uploadMultipleClassFiles(
+  classId: string,
+  formData: FormData
+): Promise<ActionResult<{
+  uploadedFiles: Array<{ fileId: string; fileName: string }>;
+  failedFiles: Array<{ fileName: string; error: string }>;
+}>> {
+  try {
+    const session = await auth();
+
+    if (!session?.user || session.user.role !== 'TEACHER') {
+      return { success: false, error: 'Only teachers can upload files' };
+    }
+
+    // Verify class ownership
+    const classRecord = await db.class.findUnique({
+      where: { id: classId },
+    });
+
+    if (!classRecord || classRecord.teacherId !== session.user.id) {
+      return { success: false, error: 'Class not found or unauthorized' };
+    }
+
+    const files = formData.getAll('files') as File[];
+
+    if (!files || files.length === 0) {
+      return { success: false, error: 'No files provided' };
+    }
+
+    console.log(`[Multi-Upload] Starting upload of ${files.length} files`);
+
+    const uploadedFiles: Array<{ fileId: string; fileName: string }> = [];
+    const failedFiles: Array<{ fileName: string; error: string }> = [];
+
+    const supportedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+    ];
+
+    const maxSize = 25 * 1024 * 1024; // 25MB
+
+    // Process each file
+    for (const file of files) {
+      try {
+        // Validate file type
+        if (!supportedTypes.includes(file.type)) {
+          failedFiles.push({
+            fileName: file.name,
+            error: 'Unsupported file type',
+          });
+          continue;
+        }
+
+        // Validate file size
+        if (file.size > maxSize) {
+          failedFiles.push({
+            fileName: file.name,
+            error: 'File too large (max 25MB)',
+          });
+          continue;
+        }
+
+        // Upload to Vercel Blob
+        const blob = await put(`class-files/${classId}/${file.name}`, file, {
+          access: 'public',
+          addRandomSuffix: true,
+        });
+
+        // Create file record in database
+        const classFile = await db.classFile.create({
+          data: {
+            classId,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            blobUrl: blob.url,
+            uploadedBy: session.user.id,
+            status: 'PENDING',
+          },
+        });
+
+        // Start background processing (non-blocking)
+        processFileInBackground(classFile.id).catch((error) => {
+          console.error(`Background processing error for ${file.name}:`, error);
+        });
+
+        uploadedFiles.push({
+          fileId: classFile.id,
+          fileName: file.name,
+        });
+
+        console.log(`[Multi-Upload] Successfully uploaded: ${file.name}`);
+      } catch (error) {
+        console.error(`[Multi-Upload] Error uploading ${file.name}:`, error);
+        failedFiles.push({
+          fileName: file.name,
+          error: error instanceof Error ? error.message : 'Upload failed',
+        });
+      }
+    }
+
+    revalidatePath(`/classes/${classId}`);
+
+    console.log(`[Multi-Upload] Completed: ${uploadedFiles.length} succeeded, ${failedFiles.length} failed`);
+
+    return {
+      success: true,
+      data: { uploadedFiles, failedFiles },
+    };
+  } catch (error) {
+    console.error('[Multi-Upload] Fatal error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return {
+      success: false,
+      error: `Failed to upload files: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Process file in background with RAG 2.0: Hierarchical chunking + page extraction
  * This runs asynchronously after file upload
  * @param fileId - File ID to process
  */
 async function processFileInBackground(fileId: string): Promise<void> {
   try {
-    console.log(`[File Processing] Starting processing for file ${fileId}`);
+    console.log(`[RAG 2.0 Processing] Starting processing for file ${fileId}`);
 
     // Update status to PROCESSING
     await db.classFile.update({
@@ -131,7 +286,7 @@ async function processFileInBackground(fileId: string): Promise<void> {
       throw new Error('File not found');
     }
 
-    console.log(`[File Processing] Downloading file from blob: ${file.fileName}`);
+    console.log(`[RAG 2.0 Processing] Downloading file from blob: ${file.fileName}`);
 
     // Download file from Vercel Blob
     const response = await fetch(file.blobUrl);
@@ -142,44 +297,83 @@ async function processFileInBackground(fileId: string): Promise<void> {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    console.log(`[File Processing] Extracting text from ${file.fileName}`);
+    console.log(`[RAG 2.0 Processing] Extracting text from ${file.fileName}`);
 
-    // Extract text from file
-    const text = await extractText(buffer, file.fileType);
+    // Extract text with page-level metadata (PDF) or simple extraction (DOCX/TXT)
+    let text: string;
+    const pageMap: Map<number, number> = new Map(); // Maps char position to page number
+
+    if (file.fileType === 'application/pdf') {
+      console.log('[RAG 2.0 Processing] Using page-level PDF extraction...');
+      const pdfResult = await extractPDFWithPages(buffer);
+
+      // Build full text with page markers
+      let currentPos = 0;
+      const textParts: string[] = [];
+
+      for (const page of pdfResult.pages) {
+        const pageText = page.text;
+        textParts.push(pageText);
+
+        // Map character positions to page numbers
+        for (let i = 0; i < pageText.length; i++) {
+          pageMap.set(currentPos + i, page.pageNumber);
+        }
+
+        currentPos += pageText.length + 2; // +2 for \n\n separator
+      }
+
+      text = textParts.join('\n\n');
+      console.log(`[RAG 2.0 Processing] Extracted ${pdfResult.totalPages} pages, ${text.length} characters`);
+    } else {
+      // DOCX or TXT - simple extraction
+      text = await extractText(buffer, file.fileType);
+      console.log(`[RAG 2.0 Processing] Extracted ${text.length} characters`);
+    }
 
     if (!text || text.trim().length === 0) {
       throw new Error('No text could be extracted from the file');
     }
 
-    console.log(
-      `[File Processing] Extracted ${text.length} characters, chunking text...`
-    );
+    console.log('[RAG 2.0 Processing] Creating hierarchical chunks...');
 
-    // Chunk the text
-    const chunks = chunkText(text);
+    // Create hierarchical chunk structure (parent-child)
+    const hierarchicalChunks = createHierarchicalChunks(text);
 
-    if (chunks.length === 0) {
+    if (hierarchicalChunks.length === 0) {
       throw new Error('No chunks generated from text');
     }
 
-    console.log(
-      `[File Processing] Created ${chunks.length} chunks, embedding...`
-    );
+    console.log(`[RAG 2.0 Processing] Created ${hierarchicalChunks.length} parent chunks`);
 
-    // Embed all chunks (in batches)
-    const chunkContents = chunks.map((c) => c.content);
-    const embeddings = await embedBatch(chunkContents);
+    // Flatten child chunks for embedding
+    const childChunks = flattenChildChunks(hierarchicalChunks);
 
-    console.log(`[File Processing] Embedded ${embeddings.length} chunks, storing in database...`);
+    console.log(`[RAG 2.0 Processing] Created ${childChunks.length} child chunks for embedding`);
 
-    // Store chunks with embeddings in database
-    // Use a transaction to ensure all chunks are saved together
+    // Embed all child chunks (they're what we search on)
+    const childContents = childChunks.map((c) => c.content);
+    const childEmbeddings = await embedBatch(childContents);
+
+    console.log(`[RAG 2.0 Processing] Embedded ${childEmbeddings.length} child chunks`);
+
+    // Store all chunks in database with parent-child relationships
+    console.log('[RAG 2.0 Processing] Storing chunks in database...');
+
     await db.$transaction(async (tx) => {
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const embedding = embeddings[i];
+      // First, insert all parent chunks (no embeddings - we don't search these)
+      const parentIdMap = new Map<number, string>(); // Map parent index to DB ID
 
-        // Store chunk with embedding using raw SQL to handle vector type
+      for (const parent of hierarchicalChunks) {
+        // Detect section heading for this parent
+        const section = detectSectionHeading(parent.content) || undefined;
+
+        // Determine page number for this parent (use start position)
+        const pageNumber = pageMap.get(parent.metadata.startChar) || null;
+
+        const parentId = `parent_${fileId}_${parent.chunkIndex}`;
+        parentIdMap.set(parent.chunkIndex, parentId);
+
         await tx.$executeRaw`
           INSERT INTO "FileChunk" (
             id,
@@ -188,24 +382,89 @@ async function processFileInBackground(fileId: string): Promise<void> {
             content,
             embedding,
             "chunkIndex",
+            "chunkType",
+            "parentId",
+            "pageNumber",
+            section,
+            topic,
+            "hasImages",
+            "imageDesc",
             metadata,
             "createdAt"
           )
           VALUES (
-            gen_random_uuid()::text,
+            ${parentId},
             ${fileId},
             ${file.classId},
-            ${chunk.content},
+            ${parent.content},
+            NULL,
+            ${parent.chunkIndex},
+            'PARENT',
+            NULL,
+            ${pageNumber},
+            ${section},
+            NULL,
+            false,
+            NULL,
+            ${JSON.stringify(parent.metadata)}::jsonb,
+            NOW()
+          )
+        `;
+      }
+
+      // Then, insert all child chunks with embeddings and parent links
+      for (let i = 0; i < childChunks.length; i++) {
+        const child = childChunks[i];
+        const embedding = childEmbeddings[i];
+        const parentId = parentIdMap.get(child.parentIndex)!;
+
+        // Determine page number for this child
+        const pageNumber = pageMap.get(child.metadata.startChar) || null;
+
+        const childId = `child_${fileId}_${child.chunkIndex}`;
+
+        await tx.$executeRaw`
+          INSERT INTO "FileChunk" (
+            id,
+            "fileId",
+            "classId",
+            content,
+            embedding,
+            "chunkIndex",
+            "chunkType",
+            "parentId",
+            "pageNumber",
+            section,
+            topic,
+            "hasImages",
+            "imageDesc",
+            metadata,
+            "createdAt"
+          )
+          VALUES (
+            ${childId},
+            ${fileId},
+            ${file.classId},
+            ${child.content},
             ${embedding}::vector,
-            ${chunk.index},
-            ${JSON.stringify(chunk.metadata)}::jsonb,
+            ${child.chunkIndex},
+            'CHILD',
+            ${parentId},
+            ${pageNumber},
+            NULL,
+            NULL,
+            false,
+            NULL,
+            ${JSON.stringify(child.metadata)}::jsonb,
             NOW()
           )
         `;
       }
     });
 
-    console.log(`[File Processing] Successfully processed ${file.fileName}`);
+    console.log(`[RAG 2.0 Processing] Successfully processed ${file.fileName}`);
+    console.log(`  - ${hierarchicalChunks.length} parent chunks (full context)`);
+    console.log(`  - ${childChunks.length} child chunks (searchable)`);
 
     // Update status to COMPLETED
     await db.classFile.update({
@@ -213,9 +472,9 @@ async function processFileInBackground(fileId: string): Promise<void> {
       data: { status: 'COMPLETED' },
     });
 
-    console.log(`[File Processing] Completed processing for file ${fileId}`);
+    console.log(`[RAG 2.0 Processing] Completed processing for file ${fileId}`);
   } catch (error) {
-    console.error(`[File Processing] Error processing file ${fileId}:`, error);
+    console.error(`[RAG 2.0 Processing] Error processing file ${fileId}:`, error);
 
     // Update status to FAILED with error message
     await db.classFile.update({
@@ -236,7 +495,7 @@ async function processFileInBackground(fileId: string): Promise<void> {
  */
 export async function getClassFiles(
   classId: string
-): Promise<ActionResult<any[]>> {
+): Promise<ActionResult<ClassFileData[]>> {
   try {
     const session = await auth();
 
