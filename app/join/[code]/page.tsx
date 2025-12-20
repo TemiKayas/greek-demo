@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { joinClassWithCode, validateInviteCodeAction } from '@/app/actions/class';
@@ -31,13 +31,7 @@ export default function JoinClassPage() {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (code) {
-      validateCode();
-    }
-  }, [code]);
-
-  async function validateCode() {
+  const validateCode = useCallback(async () => {
     setLoading(true);
     const result = await validateInviteCodeAction(code);
 
@@ -54,7 +48,13 @@ export default function JoinClassPage() {
     }
 
     setLoading(false);
-  }
+  }, [code]);
+
+  useEffect(() => {
+    if (code) {
+      validateCode();
+    }
+  }, [code, validateCode]);
 
   async function handleJoinClass() {
     setJoining(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getClassFiles, deleteClassFile, retryFileProcessing } from '@/app/actions/fileUpload';
 
 interface FileListProps {
@@ -29,18 +29,18 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadFiles();
-  }, [classId, refreshTrigger]);
-
-  async function loadFiles() {
+  const loadFiles = useCallback(async () => {
     setLoading(true);
     const result = await getClassFiles(classId);
     if (result.success) {
       setFiles(result.data);
     }
     setLoading(false);
-  }
+  }, [classId]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [classId, refreshTrigger, loadFiles]);
 
   async function handleDelete(fileId: string, fileName: string) {
     if (!confirm(`Delete "${fileName}"? This will remove all associated data and cannot be undone.`)) {
@@ -128,13 +128,28 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
                 <tr key={file.id}>
                   <td>
                     <div className="font-medium">{file.fileName}</div>
-                    {file.status === 'FAILED' && file.errorMessage && (
-                      <div className="text-xs text-error mt-1">{file.errorMessage}</div>
-                    )}
                   </td>
                   <td>{getFileTypeDisplay(file.fileType)}</td>
                   <td>{formatFileSize(file.fileSize)}</td>
-                  <td>
+                  <td className="flex items-center space-x-2">
+                    {file.status === 'PENDING' && (
+                      <span className="text-gray-500 tooltip tooltip-right" data-tip="Pending processing">
+                        ● {/* Small gray circle */}
+                      </span>
+                    )}
+                    {file.status === 'PROCESSING' && (
+                      <span className="loading loading-spinner loading-sm text-info tooltip tooltip-right" data-tip="Processing file..."></span>
+                    )}
+                    {file.status === 'COMPLETED' && (
+                      <span className="text-success tooltip tooltip-right" data-tip="Processing complete">
+                        ✓ {/* Green checkmark */}
+                      </span>
+                    )}
+                    {file.status === 'FAILED' && (
+                      <span className="text-error tooltip tooltip-right cursor-pointer" data-tip={file.errorMessage || 'Processing failed'}>
+                        ✕ {/* Red cross */}
+                      </span>
+                    )}
                     <span className={getStatusBadge(file.status)}>
                       {file.status}
                     </span>

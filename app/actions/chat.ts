@@ -6,6 +6,7 @@ import { ragSearch } from '@/lib/vectorSearch';
 import { chatWithContext } from '@/lib/openai';
 import { revalidatePath } from 'next/cache';
 import type { ChatMessage } from '@prisma/client';
+import { RAG_CONFIG } from '@/lib/config';
 
 // Types
 type ActionResult<T = void> =
@@ -42,16 +43,6 @@ interface ConversationWithDetails {
     messages: number;
   };
 }
-
-// Configuration for RAG 2.0
-const RAG_CONFIG = {
-  initialK: 30, // Initial retrieval from hybrid search (cast wide net)
-  finalK: 5, // Final number of results after reranking (best quality)
-  vectorWeight: 0.7, // Weight for vector similarity (semantic understanding)
-  bm25Weight: 0.3, // Weight for BM25 (keyword matching)
-  useReranking: true, // Enable cross-encoder reranking for better precision
-  conversationHistoryLimit: 10, // Keep last 10 messages
-};
 
 /**
  * Get or create a conversation for a student in a class
@@ -197,13 +188,20 @@ export async function sendChatMessage(
 
     // Check if we have any relevant content
     if (searchResults.length === 0) {
-      const noContextResponse = `I don't have any relevant information in the class materials to answer your question. This could mean:
+      console.log('[RAG Chat] No relevant context found, returning improved diagnostic response.');
+      const noContextResponse = `My search of the class materials did not find any specific information about your question. This could mean:
 
-1. The materials haven't been uploaded yet
-2. Your question is outside the scope of the current materials
-3. The materials are still being processed
+1. **The topic isn't covered** in the provided documents
+2. **The materials are still being processed** (check the file upload status)
+3. **The relevant text might not be machine-readable** (e.g., in a scanned image without OCR)
+4. **The materials haven't been uploaded yet** for this topic
 
-Please try asking your teacher directly, or wait for more materials to be uploaded.`;
+**What you can do:**
+- Ask your teacher for more details or additional materials
+- Check if the relevant file has finished processing
+- Try rephrasing your question with different keywords
+
+If you believe the information should be available, please let your teacher know.`;
 
       const aiMessage = await db.chatMessage.create({
         data: {
@@ -229,8 +227,13 @@ Please try asking your teacher directly, or wait for more materials to be upload
 
     // Build context from PARENT chunks (hierarchical retrieval)
     // If parent exists, use it for full context. Otherwise, fall back to child.
+    // Also prepend image descriptions if they exist for visual context.
     const context = searchResults.map((result) => {
-      const contentToUse = result.parentContent || result.content;
+      let contentToUse = result.parentContent || result.content;
+      // Check for image description and prepend it to the context
+      if (result.imageDesc) {
+        contentToUse = `[Visual Context: A relevant image with the description: "${result.imageDesc}"]\n\n${contentToUse}`;
+      }
       return contentToUse;
     });
 

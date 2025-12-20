@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getClassFiles } from '@/app/actions/fileUpload';
 
 interface FileListSidebarProps {
@@ -23,11 +23,7 @@ export function FileListSidebar({ classId }: FileListSidebarProps) {
   const [files, setFiles] = useState<ClassFile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadFiles();
-  }, [classId]);
-
-  async function loadFiles() {
+  const loadFiles = useCallback(async () => {
     setLoading(true);
     const result = await getClassFiles(classId);
     if (result.success) {
@@ -35,7 +31,11 @@ export function FileListSidebar({ classId }: FileListSidebarProps) {
       setFiles(result.data.filter((f) => f.status === 'COMPLETED'));
     }
     setLoading(false);
-  }
+  }, [classId]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [classId, loadFiles]);
 
   function formatFileSize(bytes: number): string {
     if (bytes < 1024) return bytes + ' B';

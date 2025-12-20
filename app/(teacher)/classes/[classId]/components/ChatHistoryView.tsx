@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getClassChatHistory } from '@/app/actions/chatHistory';
 
 interface ChatHistoryViewProps {
@@ -30,18 +30,18 @@ export function ChatHistoryView({ classId }: ChatHistoryViewProps) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadConversations();
-  }, [classId]);
-
-  async function loadConversations() {
+  const loadConversations = useCallback(async () => {
     setLoading(true);
     const result = await getClassChatHistory(classId);
     if (result.success) {
       setConversations(result.data as Conversation[]);
     }
     setLoading(false);
-  }
+  }, [classId]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [classId, loadConversations]);
 
   function toggleExpand(id: string) {
     setExpandedId(expandedId === id ? null : id);

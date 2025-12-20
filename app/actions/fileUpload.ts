@@ -307,6 +307,46 @@ async function processFileInBackground(fileId: string): Promise<void> {
       console.log('[RAG 2.0 Processing] Using page-level PDF extraction...');
       const pdfResult = await extractPDFWithPages(buffer);
 
+      // --- Parallelized Image Description Logic ---
+      console.log('[File Processing] Checking for images to describe...');
+      const descriptionPromises = [];
+
+      for (const page of pdfResult.pages) {
+        if (page.hasImages && page.images.length > 0) {
+          for (const image of page.images) {
+            const imageBuffer = Buffer.from(image.data);
+            const imageBase64 = imageBuffer.toString('base64');
+            // Create a promise that resolves with the description AND a reference to the page.
+            // Note: The local try/catch is removed. Errors will now propagate to the main handler.
+            const promise = extractImageDescription(imageBase64, page.pageNumber).then(description => ({
+              description,
+              page
+            }));
+            descriptionPromises.push(promise);
+          }
+        }
+      }
+
+      if (descriptionPromises.length > 0) {
+        console.log(`[File Processing] Found ${descriptionPromises.length} image(s). Generating descriptions in parallel...`);
+
+        // This will throw an error if any single promise fails, which is what we want.
+        const results = await Promise.all(descriptionPromises);
+
+        for (const result of results) {
+          if (result && result.description) {
+            console.log(`[File Processing] Embedding description for image on page ${result.page.pageNumber}.`);
+            // Use unique markers to embed the description. It will be extracted later.
+            const descriptionText = `\n\n$$IMG_DESC_START$$${result.description}$$IMG_DESC_END$$`;
+            // Modify the page text directly
+            result.page.text += descriptionText;
+            // Also update the full text, which is used for creating parent chunks
+            pdfResult.fullText += `\n\n[Image Description for Page ${result.page.pageNumber}: ${result.description}]`;
+          }
+        }
+      }
+      // --- End of Parallelized Logic ---
+
       // Build full text with page markers
       let currentPos = 0;
       const textParts: string[] = [];
@@ -348,6 +388,25 @@ async function processFileInBackground(fileId: string): Promise<void> {
 
     // Flatten child chunks for embedding
     const childChunks = flattenChildChunks(hierarchicalChunks);
+
+    // --- Extract Image Descriptions from Chunks into Structured Fields ---
+    console.log('[File Processing] Finalizing chunk data...');
+    for (const chunk of childChunks) {
+      const markerRegex = /\s*\$\$IMG_DESC_START\$\$([\s\S]*?)\$\$IMG_DESC_END\$\$/g;
+      const match = markerRegex.exec(chunk.content);
+
+      if (match) {
+        // Extract the description
+        const description = match[1].trim();
+        chunk.imageDesc = description;
+        chunk.hasImages = true;
+
+        // Clean the markers and the description itself from the main content
+        chunk.content = chunk.content.replace(markerRegex, '').trim();
+        console.log(`[File Processing] Moved image description to structured field for a chunk.`);
+      }
+    }
+    // --- End of Extraction Logic ---
 
     console.log(`[RAG 2.0 Processing] Created ${childChunks.length} child chunks for embedding`);
 
@@ -453,8 +512,8 @@ async function processFileInBackground(fileId: string): Promise<void> {
             ${pageNumber},
             NULL,
             NULL,
-            false,
-            NULL,
+            ${child.hasImages || false},
+            ${child.imageDesc || null},
             ${JSON.stringify(child.metadata)}::jsonb,
             NOW()
           )

@@ -10,6 +10,8 @@
 
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+import { createWorker } from 'tesseract.js';
+import { createCanvas, Canvas, CanvasRenderingContext2D } from 'canvas';
 
 // Configure worker for PDF.js
 if (typeof window === 'undefined') {
@@ -51,6 +53,52 @@ export interface PDFExtractionResult {
 }
 
 /**
+ * Perform OCR on a PDF, page by page, to ensure accurate text-to-page mapping.
+ */
+async function ocrPdf(pdf: pdfjsLib.PDFDocumentProxy): Promise<{ fullText: string; pages: PDFPage[] }> {
+  console.log('[PDF Extractor] Performing page-by-page OCR on PDF...');
+  const worker = await createWorker('eng');
+  let fullText = '';
+  const pages: PDFPage[] = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    console.log(`[PDF Extractor] OCR on page ${pageNum}/${pdf.numPages}...`);
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR quality
+
+    const canvas = createCanvas(viewport.width, viewport.height);
+    const context = canvas.getContext('2d');
+    await page.render({
+      canvasContext: context as any,
+      viewport,
+      canvas: canvas as any,
+    }).promise;
+
+    const pageImageBuffer = canvas.toBuffer('image/png');
+    const result = await worker.recognize(pageImageBuffer);
+
+    const pageText = result.data.text;
+    fullText += `\n\n=== Page ${pageNum} ===\n\n${pageText}`;
+    pages.push({
+      pageNumber: pageNum,
+      text: pageText,
+      hasImages: false, // OCR doesn't distinguish images, but we could add this later
+      images: [],
+      metadata: {
+        width: viewport.width,
+        height: viewport.height,
+        rotation: viewport.rotation,
+      },
+    });
+    page.cleanup();
+  }
+
+  await worker.terminate();
+  console.log('[PDF Extractor] Page-by-page OCR complete.');
+  return { fullText, pages };
+}
+
+/**
  * Extract text and metadata from PDF buffer, page by page
  */
 export async function extractPDFWithPages(
@@ -74,7 +122,7 @@ export async function extractPDFWithPages(
 
     // Extract metadata
     const metadata = await pdf.getMetadata();
-    const info = metadata.info as Record<string, unknown> | undefined;
+    const info = metadata.info as { [key: string]: string } | undefined;
     const pdfMetadata = {
       title: info?.Title as string | undefined,
       author: info?.Author as string | undefined,
@@ -104,14 +152,27 @@ export async function extractPDFWithPages(
         .join(' ')
         .trim();
 
-      // Detect images (simplified - check for image operators in page content)
       const hasImages = await detectImages(page);
+      const images: PDFImage[] = [];
+
+      // If the page has images, extract the whole page for vision analysis.
+      if (hasImages) {
+        console.log(`[PDF Extractor] Extracting image from page ${pageNum} for vision analysis...`);
+        const imageData = await extractImagesFromPage(page);
+        images.push({
+          pageNumber: pageNum,
+          data: new Uint8Array(imageData),
+          width: viewport.width,
+          height: viewport.height,
+          mimeType: 'image/png',
+        });
+      }
 
       const pdfPage: PDFPage = {
         pageNumber: pageNum,
         text: pageText,
-        hasImages,
-        images: [], // Image extraction can be added later if needed
+        hasImages: images.length > 0,
+        images: images,
         metadata: {
           width: viewport.width,
           height: viewport.height,
@@ -124,6 +185,24 @@ export async function extractPDFWithPages(
 
       // Clean up page resources
       page.cleanup();
+    }
+
+    console.log(`[PDF Extractor] Initial extraction complete: ${fullText.length} characters`);
+
+    // Check if extracted text is minimal (likely a scanned PDF)
+    if (fullText.trim().length < 100) {
+      console.log('[PDF Extractor] Minimal text detected (< 100 characters). Suspected scanned PDF.');
+      console.log('[PDF Extractor] Attempting page-by-page OCR fallback...');
+
+      // Use OCR to extract text from scanned PDF
+      const ocrResult = await ocrPdf(pdf);
+
+      // Overwrite pages and fullText with OCR results
+      pages.length = 0;
+      pages.push(...ocrResult.pages);
+      fullText = ocrResult.fullText;
+
+      console.log(`[PDF Extractor] OCR complete: ${fullText.length} characters extracted`);
     }
 
     console.log(`[PDF Extractor] Extraction complete: ${fullText.length} characters`);
@@ -164,39 +243,24 @@ async function detectImages(page: pdfjsLib.PDFPageProxy): Promise<boolean> {
 }
 
 /**
- * Extract images from a specific PDF page (advanced feature)
- * This requires canvas and is more resource-intensive
+ * Renders a single PDF page to a canvas and extracts it as a PNG image buffer.
+ * This is used to generate images for vision model analysis.
  */
 export async function extractImagesFromPage(
-  buffer: Buffer,
-  pageNumber: number
-): Promise<string | null> {
-  try {
-    const typedArray = new Uint8Array(buffer);
-    const loadingTask = pdfjsLib.getDocument({ data: typedArray });
-    const pdf = await loadingTask.promise;
+  page: pdfjsLib.PDFPageProxy
+): Promise<Buffer> {
+  const viewport = page.getViewport({ scale: 1.5 }); // Use a reasonable scale for quality
 
-    if (pageNumber > pdf.numPages) {
-      return null;
-    }
+  const canvas = createCanvas(viewport.width, viewport.height);
+  const context = canvas.getContext('2d');
 
-    const page = await pdf.getPage(pageNumber);
+  await page.render({
+    canvasContext: context as any,
+    viewport,
+    canvas: canvas as any,
+  }).promise;
 
-    // Render page to canvas and extract as image
-    // This is a simplified version - full implementation would require canvas setup
-    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
-
-    // For now, return null - full image extraction requires canvas setup
-    // which is complex in Node.js environment
-    console.log(`[PDF Extractor] Image extraction from page ${pageNumber} requested`);
-    console.log(`[PDF Extractor] Full image extraction requires canvas setup (not implemented)`);
-
-    page.cleanup();
-    return null;
-  } catch (error) {
-    console.error(`[PDF Extractor] Error extracting image from page ${pageNumber}:`, error);
-    return null;
-  }
+  return canvas.toBuffer('image/png');
 }
 
 /**

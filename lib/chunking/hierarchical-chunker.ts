@@ -14,6 +14,8 @@
  * - Preserved document structure and flow
  */
 
+import nlp from 'compromise';
+
 export interface ParentChunk {
   content: string;
   startIndex: number;
@@ -39,6 +41,8 @@ export interface ChildChunk {
     estimatedTokens: number;
     overlapWithNext: number;
   };
+  imageDesc?: string;
+  hasImages?: boolean;
 }
 
 /**
@@ -52,8 +56,8 @@ function estimateTokens(text: string): number {
  * Split text into sentences for intelligent chunking
  */
 function splitIntoSentences(text: string): string[] {
-  // Split on sentence boundaries while preserving them
-  return text.match(/[^.!?]+[.!?]+/g) || [text];
+  // Use compromise for more robust sentence boundary detection
+  return nlp(text).sentences().out('array');
 }
 
 /**

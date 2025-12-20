@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -82,13 +82,7 @@ export default function ClassDetailsPage() {
   const [generatingCode, setGeneratingCode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    if (classId) {
-      loadClassDetails();
-    }
-  }, [classId]);
-
-  async function loadClassDetails() {
+  const loadClassDetails = useCallback(async () => {
     setLoading(true);
     const result = await getClassDetails(classId);
     if (result.success) {
@@ -97,7 +91,13 @@ export default function ClassDetailsPage() {
       setError(result.error);
     }
     setLoading(false);
-  }
+  }, [classId]);
+
+  useEffect(() => {
+    if (classId) {
+      loadClassDetails();
+    }
+  }, [classId, loadClassDetails]);
 
   function handleFileUploadComplete() {
     setRefreshTrigger((prev) => prev + 1);

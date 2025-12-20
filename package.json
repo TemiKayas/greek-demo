@@ -12,11 +12,13 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.17.1",
+    "@types/tesseract.js": "^0.0.2",
     "@vercel/blob": "^2.0.0",
     "@vercel/postgres": "^0.10.0",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "canvas": "^3.2.0",
+    "compromise": "^14.14.5",
     "daisyui": "^5.3.2",
     "dotenv": "^17.2.3",
     "html2canvas": "^1.4.1",
@@ -35,6 +37,7 @@
     "react-markdown": "^10.1.0",
     "react-pdf": "^10.2.0",
     "remark-gfm": "^4.0.1",
+    "tesseract.js": "^5.0.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {

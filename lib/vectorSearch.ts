@@ -13,6 +13,8 @@ export interface SearchResult {
   chunkIndex: number;
   pageNumber?: number;
   parentId?: string;
+  imageDesc?: string;
+  hasImages?: boolean;
 }
 
 /**
@@ -24,6 +26,8 @@ export interface HierarchicalSearchResult extends SearchResult {
   chunkType: 'PARENT' | 'CHILD';
   section?: string;
   topic?: string;
+  imageDesc?: string;
+  hasImages?: boolean;
 }
 
 /**
@@ -122,6 +126,8 @@ export async function hybridSearch(
         parentId: string | null;
         section: string | null;
         topic: string | null;
+        hasImages: boolean | null;
+        imageDesc: string | null;
       }>>`
         SELECT
           fc.id as "chunkId",
@@ -133,7 +139,9 @@ export async function hybridSearch(
           fc."pageNumber" as "pageNumber",
           fc."parentId" as "parentId",
           fc.section,
-          fc.topic
+          fc.topic,
+          fc."hasImages" as "hasImages",
+          fc."imageDesc" as "imageDesc"
         FROM "FileChunk" fc
         JOIN "ClassFile" cf ON fc."fileId" = cf.id
         WHERE fc."classId" = ${classId}
@@ -155,6 +163,8 @@ export async function hybridSearch(
         parentId: string | null;
         section: string | null;
         topic: string | null;
+        hasImages: boolean | null;
+        imageDesc: string | null;
       }>>`
         SELECT
           fc.id as "chunkId",
@@ -166,7 +176,9 @@ export async function hybridSearch(
           fc."pageNumber" as "pageNumber",
           fc."parentId" as "parentId",
           fc.section,
-          fc.topic
+          fc.topic,
+          fc."hasImages" as "hasImages",
+          fc."imageDesc" as "imageDesc"
         FROM "FileChunk" fc
         JOIN "ClassFile" cf ON fc."fileId" = cf.id
         WHERE fc."classId" = ${classId}
@@ -194,6 +206,8 @@ export async function hybridSearch(
       parentId: string | null;
       section: string | null;
       topic: string | null;
+      hasImages: boolean | null;
+      imageDesc: string | null;
       vectorScore: number;
       bm25Score: number;
       combinedScore: number;
@@ -273,6 +287,8 @@ export async function hybridSearch(
       chunkType: 'CHILD' as const,
       section: result.section ?? undefined,
       topic: result.topic ?? undefined,
+      hasImages: result.hasImages ?? undefined,
+      imageDesc: result.imageDesc ?? undefined,
     }));
 
     console.log(`[Hybrid Search] Returning ${hierarchicalResults.length} hierarchical results`);

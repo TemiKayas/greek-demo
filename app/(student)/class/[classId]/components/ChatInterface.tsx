@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   getOrCreateConversation,
   sendChatMessage,
@@ -32,15 +32,7 @@ export function ChatInterface({ classId }: ChatInterfaceProps) {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    initializeChat();
-  }, [classId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  async function initializeChat() {
+  const initializeChat = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -65,7 +57,15 @@ export function ChatInterface({ classId }: ChatInterfaceProps) {
     }
 
     setLoading(false);
-  }
+  }, [classId]);
+
+  useEffect(() => {
+    initializeChat();
+  }, [classId, initializeChat]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
