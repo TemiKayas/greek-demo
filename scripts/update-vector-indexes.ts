@@ -15,7 +15,7 @@ async function updateVectorIndexes() {
         DROP INDEX IF EXISTS "FileChunk_embedding_idx";
       `);
       console.log('   ✓ Old index dropped');
-    } catch (error) {
+    } catch {
       console.log('   ⚠ No existing index to drop');
     }
 

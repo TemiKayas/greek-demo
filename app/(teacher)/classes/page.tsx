@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getTeacherClasses, createClass } from '@/app/actions/class';
 import { generateInviteQRCode } from '@/lib/utils/qr-code';
 
@@ -285,7 +286,13 @@ export default function ClassesPage() {
                 </div>
 
                 <div className="bg-base-200 p-4 rounded-lg inline-block">
-                  <img src={selectedCode.qr} alt="QR Code" className="w-48 h-48" />
+                  <Image
+                    src={selectedCode.qr}
+                    alt="QR Code"
+                    width={192}
+                    height={192}
+                    className="w-48 h-48"
+                  />
                 </div>
 
                 <div className="flex gap-2">

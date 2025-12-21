@@ -161,7 +161,7 @@ export async function sendChatMessage(
     console.log(`[RAG Chat] Processing message for class: ${conversation.class.name}`);
 
     // Save user message
-    const userMessage = await db.chatMessage.create({
+    await db.chatMessage.create({
       data: {
         conversationId,
         role: 'user',

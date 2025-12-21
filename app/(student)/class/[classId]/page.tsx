@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getClassDetails } from '@/app/actions/class';
 import { ChatInterface } from './components/ChatInterface';
@@ -19,7 +19,6 @@ type ClassDetails = {
 
 export default function StudentClassPage() {
   const params = useParams();
-  const router = useRouter();
   const classId = params?.classId as string;
 
   const [classData, setClassData] = useState<ClassDetails | null>(null);

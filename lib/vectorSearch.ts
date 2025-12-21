@@ -508,7 +508,7 @@ export async function ragSearch(
       const rerankedIndices = await rerankChunks(query, chunksToRerank, finalK);
 
       // Reorder results based on reranking scores
-      finalResults = rerankedIndices.map(({ index, score, reasoning }) => {
+      finalResults = rerankedIndices.map(({ index, score }) => {
         const result = hybridResults[index];
         return {
           ...result,

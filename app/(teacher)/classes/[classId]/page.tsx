@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   getClassDetails,
   generateNewInviteCode,
@@ -388,9 +389,11 @@ export default function ClassDetailsPage() {
                 </div>
 
                 <div className="bg-base-200 p-4 rounded-lg inline-block">
-                  <img
+                  <Image
                     src={selectedCode.qr}
                     alt="QR Code"
+                    width={192}
+                    height={192}
                     className="w-48 h-48"
                   />
                 </div>
