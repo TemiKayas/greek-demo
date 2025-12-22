@@ -6,13 +6,13 @@ export default async function Header() {
   const session = await auth();
 
   return (
-    <header className="bg-base-100 border-b border-base-content/10 shadow-sm sticky top-0 z-50">
+    <header className="bg-base-200 border-b border-base-content/20 shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/30 rounded-lg flex items-center justify-center">
               <svg
-                className="w-6 h-6 text-primary"
+                className="w-6 h-6 text-primary-content"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -26,8 +26,8 @@ export default async function Header() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-base-content">Greek Demo</h1>
-              <p className="text-xs text-base-content/70">Learn Greek with AI</p>
+              <h1 className="text-xl font-bold text-primary-content">ClassChat</h1>
+              <p className="text-xs text-primary-content/80">AI-Powered Learning</p>
             </div>
           </Link>
           <Navigation user={session?.user || null} />

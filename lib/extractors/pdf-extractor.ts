@@ -17,7 +17,11 @@ export interface PDFPage {
   text: string;
   hasImages: boolean;
   images: PDFImage[];
-  metadata: any;
+  metadata: {
+    width: number;
+    height: number;
+    rotation: number;
+  };
 }
 export interface PDFImage {
   pageNumber: number;
@@ -29,7 +33,12 @@ export interface PDFImage {
 export interface PDFExtractionResult {
   pages: PDFPage[];
   totalPages: number;
-  metadata: any;
+  metadata: {
+    title?: string;
+    author?: string;
+    subject?: string;
+    keywords?: string;
+  };
   fullText: string;
 }
 
@@ -83,7 +92,7 @@ export async function extractPDFWithPages(buffer: Buffer): Promise<PDFExtraction
       keywords: info?.Keywords,
     };
 
-    let pages: PDFPage[] = [];
+    const pages: PDFPage[] = [];
     let fullText = '';
 
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {

@@ -152,10 +152,10 @@ export default function ClassDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base-200 p-8">
+      <div className="min-h-screen bg-base-100 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-center items-center h-64">
-            <span className="loading loading-spinner loading-lg"></span>
+            <span className="loading loading-spinner loading-lg text-primary"></span>
           </div>
         </div>
       </div>
@@ -164,12 +164,12 @@ export default function ClassDetailsPage() {
 
   if (error || !classData) {
     return (
-      <div className="min-h-screen bg-base-200 p-8">
+      <div className="min-h-screen bg-base-100 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="alert alert-error">
             <span>{error || 'Class not found'}</span>
           </div>
-          <Link href="/classes" className="btn btn-ghost mt-4">
+          <Link href="/classes" className="btn btn-primary mt-4">
             ← Back to Classes
           </Link>
         </div>
@@ -178,26 +178,26 @@ export default function ClassDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-200 p-8">
+    <div className="min-h-screen bg-base-100 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
             <div className="flex gap-2 mb-2">
-              <Link href="/classes" className="btn btn-ghost btn-sm">
+              <Link href="/classes" className="btn btn-primary btn-sm">
                 ← Back to Classes
               </Link>
-              <Link href="/" className="btn btn-ghost btn-sm">
+              <Link href="/" className="btn btn-outline btn-sm border-base-content text-base-content hover:bg-base-200 hover:text-primary-content">
                 Home
               </Link>
             </div>
-            <h1 className="text-4xl font-bold">{classData.name}</h1>
+            <h1 className="text-4xl font-bold text-base-content">{classData.name}</h1>
             {classData.description && (
               <p className="text-base-content/70 mt-2">{classData.description}</p>
             )}
           </div>
           <div className="dropdown dropdown-end">
-            <label tabIndex={0} className="btn btn-ghost">
+            <label tabIndex={0} className="btn btn-outline border-base-content text-base-content hover:bg-base-200 hover:text-primary-content">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5"
@@ -209,10 +209,10 @@ export default function ClassDetailsPage() {
             </label>
             <ul
               tabIndex={0}
-              className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
+              className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-52"
             >
               <li>
-                <button onClick={handleDeleteClass} className="text-error">
+                <button onClick={handleDeleteClass} className="text-error-content hover:bg-error">
                   Delete Class
                 </button>
               </li>
@@ -221,37 +221,37 @@ export default function ClassDetailsPage() {
         </div>
 
         {/* Stats */}
-        <div className="stats shadow mb-8 w-full">
+        <div className="stats shadow mb-8 w-full bg-base-200">
           <div className="stat">
-            <div className="stat-title">Students</div>
-            <div className="stat-value">{classData.memberships.length}</div>
+            <div className="stat-title text-primary-content/70">Students</div>
+            <div className="stat-value text-primary-content">{classData.memberships.length}</div>
           </div>
           <div className="stat">
-            <div className="stat-title">Files Uploaded</div>
-            <div className="stat-value">{classData._count.files}</div>
+            <div className="stat-title text-primary-content/70">Files Uploaded</div>
+            <div className="stat-value text-primary-content">{classData._count.files}</div>
           </div>
           <div className="stat">
-            <div className="stat-title">Chat Conversations</div>
-            <div className="stat-value">{classData._count.chatConversations}</div>
+            <div className="stat-title text-primary-content/70">Chat Conversations</div>
+            <div className="stat-value text-primary-content">{classData._count.chatConversations}</div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="tabs tabs-boxed mb-6">
+        <div className="tabs tabs-boxed mb-6 bg-base-200">
           <a
-            className={`tab ${activeTab === 'files' ? 'tab-active' : ''}`}
+            className={`tab ${activeTab === 'files' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
             onClick={() => setActiveTab('files')}
           >
             Files ({classData._count.files})
           </a>
           <a
-            className={`tab ${activeTab === 'students' ? 'tab-active' : ''}`}
+            className={`tab ${activeTab === 'students' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
             onClick={() => setActiveTab('students')}
           >
             Students ({classData.memberships.length})
           </a>
           <a
-            className={`tab ${activeTab === 'history' ? 'tab-active' : ''}`}
+            className={`tab ${activeTab === 'history' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
             onClick={() => setActiveTab('history')}
           >
             Chat History ({classData._count.chatConversations})
@@ -274,10 +274,10 @@ export default function ClassDetailsPage() {
 
         {/* Students Tab */}
         {activeTab === 'students' && (
-          <div className="card bg-base-100 shadow-xl">
+          <div className="card bg-base-200 shadow-xl">
             <div className="card-body">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="card-title">Student Roster</h2>
+                <h2 className="card-title text-primary-content">Student Roster</h2>
                 <button
                   onClick={handleGenerateCode}
                   className={`btn btn-primary btn-sm ${
@@ -291,10 +291,10 @@ export default function ClassDetailsPage() {
 
               {classData.memberships.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-base-content/70 mb-4">
+                  <p className="text-primary-content/80 mb-4">
                     No students have joined yet
                   </p>
-                  <p className="text-sm text-base-content/60 mb-4">
+                  <p className="text-sm text-primary-content/70 mb-4">
                     Share an invite code with your students to get started
                   </p>
                 </div>
@@ -302,18 +302,18 @@ export default function ClassDetailsPage() {
                 <div className="overflow-x-auto">
                   <table className="table">
                     <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Joined</th>
+                      <tr className="text-primary-content">
+                        <th className="text-primary-content">Name</th>
+                        <th className="text-primary-content">Email</th>
+                        <th className="text-primary-content">Joined</th>
                       </tr>
                     </thead>
                     <tbody>
                       {classData.memberships.map((membership) => (
-                        <tr key={membership.id}>
-                          <td>{membership.user.name}</td>
-                          <td>{membership.user.email}</td>
-                          <td>
+                        <tr key={membership.id} className="text-primary-content/90 hover:bg-base-300">
+                          <td className="text-primary-content">{membership.user.name}</td>
+                          <td className="text-primary-content/80">{membership.user.email}</td>
+                          <td className="text-primary-content/80">
                             {new Date(membership.joinedAt).toLocaleDateString()}
                           </td>
                         </tr>
@@ -325,23 +325,23 @@ export default function ClassDetailsPage() {
 
               {classData.inviteCodes.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="font-semibold mb-3">Active Invite Codes</h3>
+                  <h3 className="font-semibold mb-3 text-primary-content">Active Invite Codes</h3>
                   <div className="space-y-3">
                     {classData.inviteCodes.filter(code => code.isActive).map((code) => (
                       <div
                         key={code.id}
-                        className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
+                        className="flex items-center justify-between p-3 border border-primary-content/30 rounded-lg bg-base-300"
                       >
                         <div>
-                          <p className="font-mono text-xl font-bold">{code.code}</p>
-                          <p className="text-sm text-base-content/60">
+                          <p className="font-mono text-xl font-bold text-primary-content">{code.code}</p>
+                          <p className="text-sm text-primary-content/70">
                             Used {code.usedCount} times
                           </p>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => showInviteCode(code.code)}
-                            className="btn btn-sm btn-ghost"
+                            className="btn btn-sm btn-outline border-primary-content text-primary-content hover:bg-primary hover:border-primary"
                           >
                             View QR
                           </button>
@@ -353,7 +353,7 @@ export default function ClassDetailsPage() {
                           </button>
                           <button
                             onClick={() => handleRevokeCode(code.id)}
-                            className="btn btn-sm btn-error btn-outline"
+                            className="btn btn-sm btn-error"
                           >
                             Deactivate
                           </button>

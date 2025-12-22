@@ -94,7 +94,7 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
     return (
       <div className="card bg-base-200 p-6">
         <div className="flex justify-center items-center py-8">
-          <span className="loading loading-spinner loading-lg"></span>
+          <span className="loading loading-spinner loading-lg text-primary"></span>
         </div>
       </div>
     );
@@ -102,51 +102,51 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
 
   return (
     <div className="card bg-base-200 p-6">
-      <h3 className="text-lg font-semibold mb-4">Uploaded Files</h3>
+      <h3 className="text-lg font-semibold mb-4 text-primary-content">Uploaded Files</h3>
 
       {files.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-primary-content/80">
           <p className="text-lg mb-2">No files uploaded yet</p>
-          <p className="text-sm">Upload files above to get started</p>
+          <p className="text-sm text-primary-content/70">Upload files above to get started</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="table table-zebra w-full">
+          <table className="table w-full">
             <thead>
-              <tr>
-                <th>File Name</th>
-                <th>Type</th>
-                <th>Size</th>
-                <th>Status</th>
-                <th>Chunks</th>
-                <th>Uploaded</th>
-                <th>Actions</th>
+              <tr className="text-primary-content border-primary-content/20">
+                <th className="text-primary-content">File Name</th>
+                <th className="text-primary-content">Type</th>
+                <th className="text-primary-content">Size</th>
+                <th className="text-primary-content">Status</th>
+                <th className="text-primary-content">Chunks</th>
+                <th className="text-primary-content">Uploaded</th>
+                <th className="text-primary-content">Actions</th>
               </tr>
             </thead>
             <tbody>
               {files.map((file) => (
-                <tr key={file.id}>
-                  <td>
+                <tr key={file.id} className="border-primary-content/10 hover:bg-base-300">
+                  <td className="text-primary-content">
                     <div className="font-medium">{file.fileName}</div>
                   </td>
-                  <td>{getFileTypeDisplay(file.fileType)}</td>
-                  <td>{formatFileSize(file.fileSize)}</td>
+                  <td className="text-primary-content/80">{getFileTypeDisplay(file.fileType)}</td>
+                  <td className="text-primary-content/80">{formatFileSize(file.fileSize)}</td>
                   <td className="flex items-center space-x-2">
                     {file.status === 'PENDING' && (
-                      <span className="text-gray-500 tooltip tooltip-right" data-tip="Pending processing">
-                        ● {/* Small gray circle */}
+                      <span className="text-primary-content/50 tooltip tooltip-right" data-tip="Pending processing">
+                        ● {/* Small circle */}
                       </span>
                     )}
                     {file.status === 'PROCESSING' && (
                       <span className="loading loading-spinner loading-sm text-info tooltip tooltip-right" data-tip="Processing file..."></span>
                     )}
                     {file.status === 'COMPLETED' && (
-                      <span className="text-success tooltip tooltip-right" data-tip="Processing complete">
+                      <span className="text-success-content tooltip tooltip-right" data-tip="Processing complete">
                         ✓ {/* Green checkmark */}
                       </span>
                     )}
                     {file.status === 'FAILED' && (
-                      <span className="text-error tooltip tooltip-right cursor-pointer" data-tip={file.errorMessage || 'Processing failed'}>
+                      <span className="text-error-content tooltip tooltip-right cursor-pointer" data-tip={file.errorMessage || 'Processing failed'}>
                         ✕ {/* Red cross */}
                       </span>
                     )}
@@ -154,14 +154,14 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
                       {file.status}
                     </span>
                   </td>
-                  <td>
+                  <td className="text-primary-content/80">
                     {file.status === 'COMPLETED' ? (
-                      <span className="badge badge-ghost">{file._count.chunks}</span>
+                      <span className="badge bg-primary/20 text-primary-content border-primary-content/30">{file._count.chunks}</span>
                     ) : (
-                      '-'
+                      <span className="text-primary-content/60">-</span>
                     )}
                   </td>
-                  <td className="text-sm">
+                  <td className="text-sm text-primary-content/80">
                     {new Date(file.createdAt).toLocaleDateString()}
                   </td>
                   <td>
@@ -191,11 +191,11 @@ export function FileList({ classId, refreshTrigger }: FileListProps) {
       )}
 
       {files.length > 0 && (
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-primary-content/80">
           <p>
-            <strong>Total:</strong> {files.length} file{files.length !== 1 ? 's' : ''} •{' '}
-            <strong>Ready:</strong> {files.filter((f) => f.status === 'COMPLETED').length} •{' '}
-            <strong>Processing:</strong> {files.filter((f) => f.status === 'PROCESSING' || f.status === 'PENDING').length}
+            <strong className="text-primary-content">Total:</strong> {files.length} file{files.length !== 1 ? 's' : ''} •{' '}
+            <strong className="text-primary-content">Ready:</strong> {files.filter((f) => f.status === 'COMPLETED').length} •{' '}
+            <strong className="text-primary-content">Processing:</strong> {files.filter((f) => f.status === 'PROCESSING' || f.status === 'PENDING').length}
           </p>
         </div>
       )}

@@ -45,20 +45,20 @@ export default function StudentClassPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
 
   if (error || !classData) {
     return (
-      <div className="min-h-screen bg-base-200 p-8">
+      <div className="min-h-screen bg-base-100 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="alert alert-error">
             <span>{error || 'Class not found'}</span>
           </div>
-          <Link href="/dashboard" className="btn btn-ghost mt-4">
+          <Link href="/dashboard" className="btn btn-primary mt-4">
             ← Back to Dashboard
           </Link>
         </div>
@@ -67,24 +67,24 @@ export default function StudentClassPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-base-200">
+    <div className="h-screen flex flex-col bg-base-100">
       {/* Header */}
-      <div className="bg-base-100 border-b border-base-300 px-6 py-4">
+      <div className="bg-base-200 border-b border-primary-content/10 px-6 py-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="btn btn-ghost btn-sm">
+            <Link href="/dashboard" className="btn btn-sm btn-outline border-primary-content text-primary-content hover:bg-primary hover:border-primary">
               ← Back
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">{classData.name}</h1>
-              <p className="text-sm text-base-content/70">
+              <h1 className="text-xl font-bold text-primary-content">{classData.name}</h1>
+              <p className="text-xs text-primary-content/70">
                 Teacher: {classData.teacher.name}
               </p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="btn btn-ghost btn-sm lg:hidden"
+            className="btn btn-sm btn-outline border-primary-content text-primary-content hover:bg-primary hover:border-primary lg:hidden"
           >
             {sidebarOpen ? 'Hide Files' : 'Show Files'}
           </button>
@@ -100,7 +100,7 @@ export default function StudentClassPage() {
 
         {/* Sidebar */}
         {sidebarOpen && (
-          <div className="w-80 border-l border-base-300 bg-base-100 overflow-y-auto">
+          <div className="w-80 border-l border-base-content/10 bg-base-200 overflow-y-auto shadow-lg">
             <div className="p-4">
               <FileListSidebar classId={classId} />
             </div>

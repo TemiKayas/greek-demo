@@ -31,7 +31,7 @@ export default function Navigation({ user }: Props) {
     // Not logged in - show login/signup buttons
     return (
       <div className="flex items-center gap-2">
-        <Link href="/login" className="btn btn-ghost btn-sm">
+        <Link href="/login" className="btn btn-ghost btn-sm text-primary-content hover:bg-primary/20">
           Log In
         </Link>
         <Link href="/signup" className="btn btn-primary btn-sm">
@@ -46,33 +46,30 @@ export default function Navigation({ user }: Props) {
     <div className="flex items-center gap-2">
       {user.role === 'TEACHER' && (
         <>
-          <Link href="/classes" className="btn btn-ghost btn-sm">
+          <Link href="/classes" className="btn btn-ghost btn-sm text-primary-content hover:bg-primary/20">
             Classes
-          </Link>
-          <Link href="/library" className="btn btn-ghost btn-sm">
-            Library
           </Link>
         </>
       )}
       {user.role === 'STUDENT' && (
         <>
-          <Link href="/dashboard" className="btn btn-ghost btn-sm">
+          <Link href="/dashboard" className="btn btn-ghost btn-sm text-primary-content hover:bg-primary/20">
             Dashboard
           </Link>
-          <Link href="/history" className="btn btn-ghost btn-sm">
+          <Link href="/history" className="btn btn-ghost btn-sm text-primary-content hover:bg-primary/20">
             History
           </Link>
         </>
       )}
-      <Link href="/" className="btn btn-ghost btn-sm">
+      <Link href="/" className="btn btn-ghost btn-sm text-primary-content hover:bg-primary/20">
         Home
       </Link>
-      <div className="hidden sm:flex items-center gap-2 text-sm text-base-content/70">
-        <span>Welcome, <span className="font-semibold text-base-content">{user.name || user.email}</span></span>
+      <div className="hidden sm:flex items-center gap-2 text-sm text-primary-content/80">
+        <span>Welcome, <span className="font-semibold text-primary-content">{user.name || user.email}</span></span>
       </div>
       <button
         onClick={handleSignOut}
-        className={`btn btn-outline btn-sm ${isLoggingOut ? 'loading' : ''}`}
+        className={`btn btn-outline btn-sm text-primary-content border-primary-content hover:bg-primary/20 ${isLoggingOut ? 'loading' : ''}`}
         disabled={isLoggingOut}
       >
         {isLoggingOut ? 'Signing out...' : 'Sign Out'}

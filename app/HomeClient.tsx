@@ -14,14 +14,14 @@ export default function HomeClient() {
   }
 
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className="min-h-screen bg-base-100">
       {/* Main Content */}
       <main className="container mx-auto px-4 lg:px-8 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-12">
             <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-base-content">
-              AI-Powered Greek Learning
+              AI-Powered Learning the proven way
             </h2>
             <p className="text-xl text-base-content/70 mb-2">
               Teachers create interactive materials. Students learn with AI assistance.
@@ -29,13 +29,13 @@ export default function HomeClient() {
           </div>
 
           {/* Join Class Card */}
-          <div className="card bg-base-100 shadow-xl mb-8">
+          <div className="card bg-base-200 shadow-xl mb-8">
             <div className="card-body">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary/30 rounded-lg flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-primary"
+                    className="h-6 w-6 text-primary-content"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -50,17 +50,17 @@ export default function HomeClient() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold">Join a Class</h3>
+                <h3 className="text-2xl font-bold text-primary-content">Join a Class</h3>
               </div>
 
-              <p className="text-base-content/70 mb-6">
+              <p className="text-primary-content/80 mb-6">
                 Have an invite code from your teacher? Enter it below to join your class.
               </p>
 
               <form onSubmit={handleJoinClass} className="space-y-4">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text font-medium">Class Invite Code</span>
+                    <span className="label-text font-medium text-primary-content">Class Invite Code</span>
                   </label>
                   <input
                     type="text"
@@ -68,11 +68,11 @@ export default function HomeClient() {
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="ABC123"
                     maxLength={6}
-                    className="input input-bordered input-lg text-center font-mono text-2xl tracking-widest"
+                    className="input input-bordered input-lg text-center font-mono text-2xl tracking-widest bg-base-100 text-base-content"
                     required
                   />
                   <label className="label">
-                    <span className="label-text-alt text-base-content/60">
+                    <span className="label-text-alt text-primary-content/70">
                       Enter the 6-character code from your teacher
                     </span>
                   </label>
@@ -101,43 +101,43 @@ export default function HomeClient() {
 
           {/* Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="card bg-base-100 shadow-lg">
+            <div className="card bg-base-200 shadow-lg">
               <div className="card-body">
-                <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 bg-primary/30 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-7 h-7 text-primary-content" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h4 className="card-title text-lg">AI-Generated Materials</h4>
-                <p className="text-sm text-base-content/70">
+                <h4 className="card-title text-lg text-primary-content">AI-Generated Materials</h4>
+                <p className="text-sm text-primary-content/80">
                   Flashcards, worksheets, and summaries created automatically from PDFs
                 </p>
               </div>
             </div>
 
-            <div className="card bg-base-100 shadow-lg">
+            <div className="card bg-base-200 shadow-lg">
               <div className="card-body">
-                <div className="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 bg-primary/30 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-7 h-7 text-primary-content" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h4 className="card-title text-lg">AI Chatbot</h4>
-                <p className="text-sm text-base-content/70">
+                <h4 className="card-title text-lg text-primary-content">AI Chatbot</h4>
+                <p className="text-sm text-primary-content/80">
                   Ask questions about your learning materials and get instant answers
                 </p>
               </div>
             </div>
 
-            <div className="card bg-base-100 shadow-lg">
+            <div className="card bg-base-200 shadow-lg">
               <div className="card-body">
-                <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 bg-primary/30 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="w-7 h-7 text-primary-content" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h4 className="card-title text-lg">Track Progress</h4>
-                <p className="text-sm text-base-content/70">
+                <h4 className="card-title text-lg text-primary-content">Track Progress</h4>
+                <p className="text-sm text-primary-content/80">
                   Teachers can view student questions and identify common struggles
                 </p>
               </div>
@@ -145,17 +145,17 @@ export default function HomeClient() {
           </div>
 
           {/* For Teachers */}
-          <div className="card bg-base-100 shadow-lg">
+          <div className="card bg-base-200 shadow-lg">
             <div className="card-body text-center">
-              <h3 className="text-xl font-bold mb-2">Are you a teacher?</h3>
-              <p className="text-base-content/70 mb-4">
+              <h3 className="text-xl font-bold mb-2 text-primary-content">Are you a teacher?</h3>
+              <p className="text-primary-content/80 mb-4">
                 Create classes, upload materials, and generate interactive learning content
               </p>
               <div className="flex gap-3 justify-center">
                 <Link href="/signup" className="btn btn-primary">
                   Get Started
                 </Link>
-                <Link href="/login" className="btn btn-outline">
+                <Link href="/login" className="btn btn-outline btn-primary-content">
                   Sign In
                 </Link>
               </div>
@@ -165,9 +165,9 @@ export default function HomeClient() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-12 py-6 bg-base-300 border-t border-base-content/10 text-base-content/60 text-center">
+      <footer className="mt-12 py-6 bg-base-300 border-t border-primary-content/20 text-primary-content/80 text-center">
         <p className="text-sm">
-          Built with Next.js, Prisma, and Google Gemini
+          Built with Next.js, Prisma, and OpenAI
         </p>
       </footer>
     </div>

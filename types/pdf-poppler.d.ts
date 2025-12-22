@@ -13,5 +13,5 @@ declare module 'pdf-poppler' {
   ): Promise<string>;
 
   export const path: string;
-  export const exec_options: any;
+  export const exec_options: Record<string, unknown>;
 }

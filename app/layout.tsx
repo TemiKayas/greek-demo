@@ -20,8 +20,8 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: "Modern Greek Education Tools",
-  description: "AI-powered tools for Modern Greek learning: RAG chatbot, worksheet generator, and flashcard builder",
+  title: "ClassChat - AI-Powered Learning",
+  description: "Teachers create interactive materials. Students learn with AI assistance.",
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} antialiased`}
       >

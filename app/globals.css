@@ -1,10 +1,10 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-/* Dark Theme (Default) */
+/* Light Theme (Default) */
 :root {
-  --background: #1a1a1a;
-  --foreground: #ffffff;
+  --background: #B4B8AB;
+  --foreground: #153243;
 }
 
 @theme inline {
@@ -13,27 +13,27 @@
   --font-sans: var(--font-quicksand);
   --font-mono: var(--font-geist-mono);
 
-  /* Greek Dark Theme - Navy, Gray, Light Blue */
-  --color-primary: #3B82F6;        /* Light blue accent */
-  --color-primary-content: #ffffff;
-  --color-secondary: #1e3a8a;      /* Navy blue */
-  --color-secondary-content: #ffffff;
-  --color-accent: #60A5FA;         /* Lighter blue */
-  --color-accent-content: #ffffff;
-  --color-neutral: #374151;        /* Gray */
-  --color-neutral-content: #ffffff;
-  --color-base-100: #1a1a1a;       /* Darkest */
-  --color-base-200: #242424;       /* Dark */
-  --color-base-300: #2d2d2d;       /* Medium dark */
-  --color-base-content: #ffffff;   /* White text */
-  --color-info: #3B82F6;           /* Light blue */
-  --color-info-content: #ffffff;
-  --color-success: #60A5FA;        /* Light blue (no green) */
-  --color-success-content: #ffffff;
-  --color-warning: #3B82F6;        /* Light blue (no orange) */
-  --color-warning-content: #ffffff;
-  --color-error: #1e3a8a;          /* Navy (no red) */
-  --color-error-content: #ffffff;
+  /* ClassChat Light Theme */
+  --color-primary: #284B63;        /* Accent color */
+  --color-primary-content: #F4F9E9;
+  --color-secondary: #153243;      /* Dark blue */
+  --color-secondary-content: #F4F9E9;
+  --color-accent: #284B63;         /* Accent */
+  --color-accent-content: #F4F9E9;
+  --color-neutral: #153243;        /* Dark blue */
+  --color-neutral-content: #F4F9E9;
+  --color-base-100: #B4B8AB;       /* Light off-white background */
+  --color-base-200: #153243;       /* Dark blue for cards */
+  --color-base-300: #0f2836;       /* Darker shade */
+  --color-base-content: #153243;   /* Dark text */
+  --color-info: #284B63;
+  --color-info-content: #F4F9E9;
+  --color-success: #6B8E23;
+  --color-success-content: #F4F9E9;
+  --color-warning: #D4AF37;
+  --color-warning-content: #153243;
+  --color-error: #D4764E;
+  --color-error-content: #F4F9E9;
   --rounded-btn: 0.5rem;
   --rounded-box: 0.75rem;
 }
