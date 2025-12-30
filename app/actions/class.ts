@@ -59,6 +59,7 @@ type ClassDetailsData = Prisma.ClassGetPayload<{
         memberships: true;
         files: true;
         chatConversations: true;
+        worksheets: true;
       };
     };
   };
@@ -266,6 +267,7 @@ export async function getClassDetails(classId: string): Promise<ActionResult<Cla
             memberships: true,
             files: true,
             chatConversations: true,
+            worksheets: true,
           },
         },
       },

@@ -79,12 +79,12 @@ export async function uploadClassFile(
       };
     }
 
-    // Validate file size (25MB limit)
-    const maxSize = 25 * 1024 * 1024; // 25MB
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024; // 50MB
     if (file.size > maxSize) {
       return {
         success: false,
-        error: 'File too large. Maximum size is 25MB.',
+        error: 'File too large. Maximum size is 50MB.',
       };
     }
 
@@ -137,7 +137,8 @@ export async function uploadClassFile(
 }
 
 /**
- * Upload multiple files to a class and process them in the background
+ * Upload multiple files to a class with atomic transaction (all-or-nothing)
+ * If any file fails, all uploads are rolled back
  * @param classId - Class ID to upload files to
  * @param formData - Form data containing the files
  * @returns Array of file IDs and any errors
@@ -149,6 +150,9 @@ export async function uploadMultipleClassFiles(
   uploadedFiles: Array<{ fileId: string; fileName: string }>;
   failedFiles: Array<{ fileName: string; error: string }>;
 }>> {
+  const uploadedBlobUrls: string[] = [];
+  const createdFileIds: string[] = [];
+
   try {
     const session = await auth();
 
@@ -171,10 +175,7 @@ export async function uploadMultipleClassFiles(
       return { success: false, error: 'No files provided' };
     }
 
-    console.log(`[Multi-Upload] Starting upload of ${files.length} files`);
-
-    const uploadedFiles: Array<{ fileId: string; fileName: string }> = [];
-    const failedFiles: Array<{ fileName: string; error: string }> = [];
+    console.log(`[Atomic Upload] Starting upload of ${files.length} files`);
 
     const supportedTypes = [
       'application/pdf',
@@ -182,84 +183,185 @@ export async function uploadMultipleClassFiles(
       'text/plain',
     ];
 
-    const maxSize = 25 * 1024 * 1024; // 25MB
+    const maxFileSize = 50 * 1024 * 1024; // 50MB per file
+    const maxTotalSize = 250 * 1024 * 1024; // 250MB total
 
-    // Process each file
+    // STEP 1: Validate ALL files before uploading anything
+    console.log('[Atomic Upload] Step 1: Validating all files...');
+
+    let totalSize = 0;
+    for (const file of files) {
+      // Validate file type
+      if (!supportedTypes.includes(file.type)) {
+        throw new Error(`File "${file.name}" has unsupported type. Please upload PDF, DOCX, or TXT files only.`);
+      }
+
+      // Validate individual file size
+      if (file.size > maxFileSize) {
+        throw new Error(`File "${file.name}" is too large. Maximum file size is 50MB.`);
+      }
+
+      totalSize += file.size;
+    }
+
+    // Validate total size
+    if (totalSize > maxTotalSize) {
+      throw new Error(`Total upload size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds limit of 250MB.`);
+    }
+
+    console.log(`[Atomic Upload] ✓ All files validated. Total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+
+    // STEP 2: Upload ALL files to blob storage
+    console.log('[Atomic Upload] Step 2: Uploading all files to blob storage...');
+
+    const uploadedFileData: Array<{
+      file: File;
+      blobUrl: string;
+    }> = [];
+
     for (const file of files) {
       try {
-        // Validate file type
-        if (!supportedTypes.includes(file.type)) {
-          failedFiles.push({
-            fileName: file.name,
-            error: 'Unsupported file type',
-          });
-          continue;
-        }
-
-        // Validate file size
-        if (file.size > maxSize) {
-          failedFiles.push({
-            fileName: file.name,
-            error: 'File too large (max 25MB)',
-          });
-          continue;
-        }
-
-        // Upload to Vercel Blob
+        console.log(`[Atomic Upload] Uploading ${file.name} to blob...`);
         const blob = await put(`class-files/${classId}/${file.name}`, file, {
           access: 'public',
           addRandomSuffix: true,
         });
 
-        // Create file record in database
-        const classFile = await db.classFile.create({
-          data: {
-            classId,
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            blobUrl: blob.url,
-            uploadedBy: session.user.id,
-            status: 'PENDING',
-          },
+        uploadedBlobUrls.push(blob.url);
+        uploadedFileData.push({
+          file,
+          blobUrl: blob.url,
         });
 
-        // Start background processing (non-blocking)
-        processFileInBackground(classFile.id).catch((error) => {
-          console.error(`Background processing error for ${file.name}:`, error);
-        });
-
-        uploadedFiles.push({
-          fileId: classFile.id,
-          fileName: file.name,
-        });
-
-        console.log(`[Multi-Upload] Successfully uploaded: ${file.name}`);
+        console.log(`[Atomic Upload] ✓ ${file.name} uploaded to blob`);
       } catch (error) {
-        console.error(`[Multi-Upload] Error uploading ${file.name}:`, error);
-        failedFiles.push({
-          fileName: file.name,
-          error: error instanceof Error ? error.message : 'Upload failed',
-        });
+        console.error(`[Atomic Upload] Failed to upload ${file.name} to blob:`, error);
+        throw new Error(`Failed to upload "${file.name}" to storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
+    console.log(`[Atomic Upload] ✓ All ${files.length} files uploaded to blob storage`);
+
+    // STEP 3: Create ALL database records in a transaction
+    console.log('[Atomic Upload] Step 3: Creating database records in transaction...');
+
+    const uploadedFiles: Array<{ fileId: string; fileName: string }> = [];
+
+    try {
+      await db.$transaction(async (tx) => {
+        for (const { file, blobUrl } of uploadedFileData) {
+          const classFile = await tx.classFile.create({
+            data: {
+              classId,
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              blobUrl,
+              uploadedBy: session.user.id,
+              status: 'PENDING',
+            },
+          });
+
+          createdFileIds.push(classFile.id);
+          uploadedFiles.push({
+            fileId: classFile.id,
+            fileName: file.name,
+          });
+
+          console.log(`[Atomic Upload] ✓ Database record created for ${file.name}`);
+        }
+      });
+
+      console.log(`[Atomic Upload] ✓ All database records created successfully`);
+    } catch (error) {
+      console.error('[Atomic Upload] Database transaction failed:', error);
+      throw new Error(`Failed to create database records: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // STEP 4: Start sequential background processing
+    console.log('[Atomic Upload] Step 4: Starting sequential background processing...');
+
+    // Process files sequentially to avoid resource contention and race conditions
+    processFilesSequentially(uploadedFiles.map(f => f.fileId)).catch((error) => {
+      console.error('[Atomic Upload] Sequential processing error:', error);
+    });
+
     revalidatePath(`/classes/${classId}`);
 
-    console.log(`[Multi-Upload] Completed: ${uploadedFiles.length} succeeded, ${failedFiles.length} failed`);
+    console.log(`[Atomic Upload] ✅ Successfully completed atomic upload of ${files.length} files`);
 
     return {
       success: true,
-      data: { uploadedFiles, failedFiles },
+      data: {
+        uploadedFiles,
+        failedFiles: [] // No partial failures in atomic mode
+      },
     };
   } catch (error) {
-    console.error('[Multi-Upload] Fatal error:', error);
+    console.error('[Atomic Upload] Error occurred, rolling back...', error);
+
+    // ROLLBACK: Delete all uploaded blobs
+    if (uploadedBlobUrls.length > 0) {
+      console.log(`[Atomic Upload] Deleting ${uploadedBlobUrls.length} uploaded blobs...`);
+      for (const blobUrl of uploadedBlobUrls) {
+        try {
+          await del(blobUrl);
+          console.log(`[Atomic Upload] ✓ Deleted blob: ${blobUrl}`);
+        } catch (delError) {
+          console.error(`[Atomic Upload] Failed to delete blob ${blobUrl}:`, delError);
+        }
+      }
+    }
+
+    // ROLLBACK: Delete all created database records
+    if (createdFileIds.length > 0) {
+      console.log(`[Atomic Upload] Deleting ${createdFileIds.length} database records...`);
+      try {
+        await db.classFile.deleteMany({
+          where: {
+            id: {
+              in: createdFileIds,
+            },
+          },
+        });
+        console.log(`[Atomic Upload] ✓ Deleted ${createdFileIds.length} database records`);
+      } catch (delError) {
+        console.error('[Atomic Upload] Failed to delete database records:', delError);
+      }
+    }
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.log(`[Atomic Upload] ❌ Rollback complete. Error: ${errorMessage}`);
+
     return {
       success: false,
-      error: `Failed to upload files: ${errorMessage}`,
+      error: `Upload failed and was rolled back: ${errorMessage}`,
     };
   }
+}
+
+/**
+ * Process multiple files sequentially (one at a time)
+ * This prevents race conditions and resource contention
+ * @param fileIds - Array of file IDs to process
+ */
+async function processFilesSequentially(fileIds: string[]): Promise<void> {
+  console.log(`[Sequential Processing] Starting sequential processing of ${fileIds.length} files...`);
+
+  for (let i = 0; i < fileIds.length; i++) {
+    const fileId = fileIds[i];
+    console.log(`[Sequential Processing] Processing file ${i + 1}/${fileIds.length}: ${fileId}`);
+
+    try {
+      await processFileInBackground(fileId);
+      console.log(`[Sequential Processing] ✓ File ${i + 1}/${fileIds.length} completed`);
+    } catch (error) {
+      console.error(`[Sequential Processing] ✗ File ${i + 1}/${fileIds.length} failed:`, error);
+      // Continue with next file even if this one fails
+    }
+  }
+
+  console.log(`[Sequential Processing] All files processed!`);
 }
 
 /**
@@ -270,6 +372,20 @@ export async function uploadMultipleClassFiles(
 async function processFileInBackground(fileId: string): Promise<void> {
   try {
     console.log(`[RAG 2.0 Processing] Starting processing for file ${fileId}`);
+
+    // IMPORTANT: Delete any existing chunks for this file to avoid duplicates
+    console.log(`[RAG 2.0 Processing] Checking for existing chunks...`);
+    const existingChunks = await db.fileChunk.count({
+      where: { fileId },
+    });
+
+    if (existingChunks > 0) {
+      console.log(`[RAG 2.0 Processing] Found ${existingChunks} existing chunks. Deleting...`);
+      await db.fileChunk.deleteMany({
+        where: { fileId },
+      });
+      console.log(`[RAG 2.0 Processing] ✓ Deleted ${existingChunks} existing chunks`);
+    }
 
     // Update status to PROCESSING
     await db.classFile.update({
@@ -305,7 +421,7 @@ async function processFileInBackground(fileId: string): Promise<void> {
 
     if (file.fileType === 'application/pdf') {
       console.log('[RAG 2.0 Processing] Using page-level PDF extraction...');
-      const pdfResult = await extractPDFWithPages(buffer);
+      const pdfResult = await extractPDFWithPages(buffer, fileId);
 
       // --- Parallelized Image Description Logic ---
       console.log('[File Processing] Checking for images to describe...');
@@ -707,6 +823,15 @@ export async function retryFileProcessing(
         error: 'Can only retry failed files',
       };
     }
+
+    console.log(`[Retry] Deleting old chunks for file ${fileId}...`);
+
+    // Delete all existing chunks to avoid duplicate key errors
+    await db.fileChunk.deleteMany({
+      where: { fileId },
+    });
+
+    console.log(`[Retry] Old chunks deleted. Resetting file status...`);
 
     // Reset status and clear error
     await db.classFile.update({

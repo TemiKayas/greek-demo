@@ -210,7 +210,7 @@ export default function ClassesPage() {
         {showCreateModal && (
           <div className="modal modal-open">
             <div className="modal-box">
-              <h3 className="font-bold text-lg mb-4">Create New Class</h3>
+              <h3 className="font-bold text-lg mb-4 text-base-content">Create New Class</h3>
 
               {createError && (
                 <div className="alert alert-error mb-4">
@@ -221,7 +221,7 @@ export default function ClassesPage() {
               <form onSubmit={handleCreateClass}>
                 <div className="form-control mb-4">
                   <label className="label">
-                    <span className="label-text">Class Name</span>
+                    <span className="label-text text-base-content">Class Name</span>
                   </label>
                   <input
                     type="text"
@@ -235,7 +235,7 @@ export default function ClassesPage() {
 
                 <div className="form-control mb-6">
                   <label className="label">
-                    <span className="label-text">Description (optional)</span>
+                    <span className="label-text text-base-content">Description (optional)</span>
                   </label>
                   <textarea
                     name="description"
@@ -275,12 +275,12 @@ export default function ClassesPage() {
         {showCodeModal && selectedCode && (
           <div className="modal modal-open">
             <div className="modal-box">
-              <h3 className="font-bold text-lg mb-4">Invite Students</h3>
+              <h3 className="font-bold text-lg mb-4 text-base-content">Invite Students</h3>
 
               <div className="text-center space-y-4">
                 <div className="bg-base-200 p-6 rounded-lg">
                   <p className="text-sm text-base-content/70 mb-2">Invite Code</p>
-                  <p className="text-4xl font-mono font-bold tracking-wider">
+                  <p className="text-4xl font-mono font-bold tracking-wider text-base-content">
                     {selectedCode.code}
                   </p>
                 </div>

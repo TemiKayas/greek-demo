@@ -42,7 +42,7 @@ export interface PDFExtractionResult {
   fullText: string;
 }
 
-async function ocrPdfPage(pdfFilePath: string, pageNum: number): Promise<string> {
+async function ocrPdfPage(pdfFilePath: string, pageNum: number, fileId: string): Promise<string> {
   console.log(`[PDF Extractor] OCR on page ${pageNum} via pdf-poppler...`);
 
   // Use absolute path for tesseract worker in Node.js environment
@@ -52,7 +52,8 @@ async function ocrPdfPage(pdfFilePath: string, pageNum: number): Promise<string>
     workerPath: workerPath,
   });
 
-  const outPrefix = `pdf_page_ocr_${Date.now()}`;
+  // Use fileId to ensure unique temp file names (prevents race conditions)
+  const outPrefix = `pdf_page_ocr_${fileId}_${pageNum}`;
   const options = {
     format: 'png' as const,
     out_dir: os.tmpdir(),
@@ -60,12 +61,20 @@ async function ocrPdfPage(pdfFilePath: string, pageNum: number): Promise<string>
     page: pageNum,
   };
 
-  await convertPdfToImage(pdfFilePath, options);
+  console.log(`[PDF Extractor DEBUG] Converting PDF page ${pageNum} with prefix: ${outPrefix}`);
 
-  // Construct the expected output file path (pdftocairo names it as prefix-pagenum.png)
-  const imagePath = path.join(os.tmpdir(), `${outPrefix}-${pageNum}.png`);
+  let imagePath: string;
+  try {
+    // convertPdfToImage now returns the actual path created by pdftocairo
+    imagePath = await convertPdfToImage(pdfFilePath, options);
+    console.log(`[PDF Extractor DEBUG] ✓ convertPdfToImage completed, file at: ${imagePath}`);
+  } catch (error) {
+    console.error(`[PDF Extractor DEBUG] ✗ convertPdfToImage failed:`, error);
+    throw error;
+  }
 
   const { data: { text } } = await worker.recognize(imagePath);
+  console.log(`[PDF Extractor DEBUG] ✓ OCR recognition completed, extracted ${text.length} characters`);
 
   await fs.unlink(imagePath);
   await worker.terminate();
@@ -73,8 +82,10 @@ async function ocrPdfPage(pdfFilePath: string, pageNum: number): Promise<string>
   return text;
 }
 
-export async function extractPDFWithPages(buffer: Buffer): Promise<PDFExtractionResult> {
-  const tempFilePath = path.join(os.tmpdir(), `temp_pdf_${Date.now()}.pdf`);
+export async function extractPDFWithPages(buffer: Buffer, fileId?: string): Promise<PDFExtractionResult> {
+  // Use fileId for unique temp file naming (prevents race conditions in parallel processing)
+  const uniqueId = fileId || `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const tempFilePath = path.join(os.tmpdir(), `temp_pdf_${uniqueId}.pdf`);
   await fs.writeFile(tempFilePath, buffer);
 
   try {
@@ -105,7 +116,7 @@ export async function extractPDFWithPages(buffer: Buffer): Promise<PDFExtraction
       // If text is minimal, perform OCR for this page
       if (pageText.length < 100) {
         console.log(`[PDF Extractor] Minimal text on page ${pageNum}. Performing OCR.`);
-        pageText = await ocrPdfPage(tempFilePath, pageNum);
+        pageText = await ocrPdfPage(tempFilePath, pageNum, uniqueId);
       }
 
       fullText += `\n\n=== Page ${pageNum} ===\n\n${pageText}`;
@@ -114,17 +125,16 @@ export async function extractPDFWithPages(buffer: Buffer): Promise<PDFExtraction
       const hasImages = await detectImages(page);
       if (hasImages) {
         console.log(`[PDF Extractor] Extracting image from page ${pageNum} via system Poppler...`);
-        const outPrefix = `pdf_page_vision_${Date.now()}`;
+        // Use fileId to ensure unique temp file names (prevents race conditions)
+        const outPrefix = `pdf_page_vision_${uniqueId}_${pageNum}`;
         const options = {
           format: 'png' as const,
           out_dir: os.tmpdir(),
           out_prefix: outPrefix,
           page: pageNum,
         };
-        await convertPdfToImage(tempFilePath, options);
-
-        // Construct the expected output file path (pdftocairo names it as prefix-pagenum.png)
-        const imagePath = path.join(os.tmpdir(), `${outPrefix}-${pageNum}.png`);
+        // convertPdfToImage now returns the actual path created by pdftocairo
+        const imagePath = await convertPdfToImage(tempFilePath, options);
         const imageData = await fs.readFile(imagePath);
         images.push({
           pageNumber: pageNum,

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getClassDetails } from '@/app/actions/class';
 import { ChatInterface } from './components/ChatInterface';
 import { FileListSidebar } from './components/FileListSidebar';
+import { StudentWorksheetList } from './components/StudentWorksheetList';
 
 type ClassDetails = {
   id: string;
@@ -25,6 +26,7 @@ export default function StudentClassPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<'chat' | 'worksheets'>('chat');
 
   const loadClassDetails = useCallback(async () => {
     setLoading(true);
@@ -93,9 +95,29 @@ export default function StudentClassPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat Area */}
+        {/* Main Area */}
         <div className="flex-1 flex flex-col bg-base-100">
-          <ChatInterface classId={classId} />
+          {/* Tabs */}
+          <div className="tabs tabs-boxed mb-6 bg-base-200">
+            <a
+              className={`tab ${activeTab === 'chat' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
+              onClick={() => setActiveTab('chat')}
+            >
+              Chat
+            </a>
+            <a
+              className={`tab ${activeTab === 'worksheets' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
+              onClick={() => setActiveTab('worksheets')}
+            >
+              Worksheets
+            </a>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'chat' && <ChatInterface classId={classId} />}
+            {activeTab === 'worksheets' && <StudentWorksheetList />}
+          </div>
         </div>
 
         {/* Sidebar */}

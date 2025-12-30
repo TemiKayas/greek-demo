@@ -135,12 +135,12 @@ export default function StudentDashboardPage() {
                 You haven&apos;t joined any classes. Ask your teacher for an invite code
                 to get started.
               </p>
-              <div className="text-sm text-base-content/60">
+              <div className="text-sm text-base-content/70">
                 <p>Have an invite code?</p>
                 <p className="mt-2">
                   Visit the invite link provided by your teacher or enter the code
                   at{' '}
-                  <code className="bg-base-200 px-2 py-1 rounded">
+                  <code className="bg-base-200 text-base-content px-2 py-1 rounded">
                     /join/[CODE]
                   </code>
                 </p>
@@ -272,7 +272,7 @@ export default function StudentDashboardPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold">Join a Class</h3>
+                <h3 className="text-2xl font-bold text-base-content">Join a Class</h3>
               </div>
 
               <p className="text-base-content/70 mb-6">
@@ -282,7 +282,7 @@ export default function StudentDashboardPage() {
               <form onSubmit={handleJoinClass} className="space-y-4">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text font-medium">Class Invite Code</span>
+                    <span className="label-text font-medium text-base-content">Class Invite Code</span>
                   </label>
                   <input
                     type="text"

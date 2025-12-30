@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { uploadMultipleClassFiles } from '@/app/actions/fileUpload';
+
+type UploadStage = 'idle' | 'validating' | 'uploading' | 'creating' | 'processing' | 'complete';
 
 interface FileUploadSectionProps {
   classId: string;
@@ -10,6 +12,7 @@ interface FileUploadSectionProps {
 
 export function FileUploadSection({ classId, onUploadComplete }: FileUploadSectionProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -22,11 +25,26 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
     }
   }
 
+  // Block navigation during upload
+  useEffect(() => {
+    if (!uploading) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Upload in progress. Are you sure you want to leave?';
+      return e.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [uploading]);
+
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setUploading(true);
+    setUploadStage('validating');
 
     // Store form reference before async operation (React synthetic events are pooled)
     const form = e.currentTarget;
@@ -37,28 +55,38 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
       console.log('[UI] Starting file upload...');
       console.log('[UI] FormData files:', formData.getAll('files'));
 
+      // Simulate stage progression for better UX
+      // (In reality, server does all at once, but we show stages)
+      setUploadStage('validating');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setUploadStage('uploading');
+      const uploadStartTime = Date.now();
+
       const result = await uploadMultipleClassFiles(classId, formData);
+
+      const uploadDuration = Date.now() - uploadStartTime;
+
+      // Show creating/processing stages if upload was quick
+      if (uploadDuration < 2000) {
+        setUploadStage('creating');
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
       console.log('[UI] Upload result:', result);
 
       if (result.success) {
-        const { uploadedFiles, failedFiles } = result.data;
+        const { uploadedFiles } = result.data;
 
-        // Show success message
+        setUploadStage('processing');
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Show success message (in atomic mode, all succeed or all fail)
         if (uploadedFiles.length > 0) {
           setSuccess(
-            `Successfully uploaded ${uploadedFiles.length} file(s)! Processing in background...`
+            `✅ Successfully uploaded all ${uploadedFiles.length} file(s)! Processing in background...`
           );
-        }
-
-        // Show errors for failed files
-        if (failedFiles.length > 0) {
-          const failedNames = failedFiles.map(f => `${f.fileName}: ${f.error}`).join(', ');
-          setError(`Some files failed to upload: ${failedNames}`);
-        }
-
-        // Reset form if all files succeeded
-        if (failedFiles.length === 0) {
+          setUploadStage('complete');
           form.reset();
           setSelectedFiles([]);
         }
@@ -67,13 +95,17 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
       } else {
         console.error('[UI] Upload failed:', result.error);
         setError(result.error);
+        setUploadStage('idle');
       }
     } catch (err) {
       console.error('[UI] Upload exception:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(`Failed to upload files: ${errorMessage}`);
+      setUploadStage('idle');
     } finally {
       setUploading(false);
+      // Reset to idle after showing complete
+      setTimeout(() => setUploadStage('idle'), 2000);
     }
   }
 
@@ -81,13 +113,14 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
     <div className="card bg-base-200 p-6">
       <h3 className="text-lg font-semibold mb-4">Upload Class Materials</h3>
       <p className="text-sm text-gray-600 mb-4">
-        Upload PDF, DOCX, or TXT files. You can select multiple files at once. Files will be processed and made available to students for chatting.
+        Upload PDF, DOCX, or TXT files. You can select multiple files at once.
+        <span className="font-semibold text-primary"> All files must succeed or the entire upload will be cancelled.</span>
       </p>
 
       <form onSubmit={handleUpload}>
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Select files (PDF, DOCX, TXT - max 25MB each)</span>
+            <span className="label-text">Select files (PDF, DOCX, TXT - max 50MB each, 250MB total)</span>
           </label>
           <input
             type="file"
@@ -126,6 +159,52 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
           </div>
         )}
 
+        {/* Upload Stage Progress */}
+        {uploading && (
+          <div className="mt-4 p-4 bg-base-300 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="loading loading-spinner loading-md text-primary"></span>
+              <div className="flex-1">
+                <p className="font-semibold text-primary-content">
+                  {uploadStage === 'validating' && '🔍 Validating files...'}
+                  {uploadStage === 'uploading' && '📤 Uploading to storage...'}
+                  {uploadStage === 'creating' && '💾 Creating database records...'}
+                  {uploadStage === 'processing' && '⚙️ Starting background processing...'}
+                  {uploadStage === 'complete' && '✅ Upload complete!'}
+                </p>
+                <p className="text-sm text-primary-content/70">
+                  {uploadStage === 'validating' && 'Checking file types and sizes...'}
+                  {uploadStage === 'uploading' && 'Transferring files to cloud storage...'}
+                  {uploadStage === 'creating' && 'Saving file information...'}
+                  {uploadStage === 'processing' && 'Files will be processed shortly...'}
+                  {uploadStage === 'complete' && 'All files uploaded successfully!'}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-base-100 rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-500"
+                style={{
+                  width: uploadStage === 'validating' ? '25%' :
+                         uploadStage === 'uploading' ? '50%' :
+                         uploadStage === 'creating' ? '75%' :
+                         uploadStage === 'processing' ? '90%' :
+                         '100%'
+                }}
+              ></div>
+            </div>
+
+            <p className="text-xs text-warning mt-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Do not close this page or navigate away
+            </p>
+          </div>
+        )}
+
         <button
           type="submit"
           className="btn btn-primary mt-4 w-full"
@@ -134,7 +213,7 @@ export function FileUploadSection({ classId, onUploadComplete }: FileUploadSecti
           {uploading ? (
             <>
               <span className="loading loading-spinner"></span>
-              Uploading {selectedFiles.length} file(s)...
+              Processing...
             </>
           ) : (
             <>

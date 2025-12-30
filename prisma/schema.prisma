@@ -2,14 +2,14 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_UNPOOLED")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DATABASE_URL_UNPOOLED")
   extensions = [vector]
 }
 
@@ -27,15 +27,16 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  passwordHash String   // bcrypt hash
+  passwordHash String // bcrypt hash
   role         UserRole
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
-  teachingClasses   Class[]              @relation("TeacherClasses")
-  classMemberships  ClassMembership[]
-  chatConversations ChatConversation[]
+  teachingClasses      Class[]               @relation("TeacherClasses")
+  classMemberships     ClassMembership[]
+  chatConversations    ChatConversation[]
+  worksheetSubmissions WorksheetSubmission[]
 
   @@index([email])
   @@index([role])
@@ -55,22 +56,23 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  teacher           User                 @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher           User               @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
   memberships       ClassMembership[]
   inviteCodes       InviteCode[]
   files             ClassFile[]
   chatConversations ChatConversation[]
+  worksheets        Worksheet[]
 
   @@index([teacherId])
   @@index([isActive])
 }
 
 model ClassMembership {
-  id        String   @id @default(cuid())
-  classId   String
-  userId    String
-  role      String   @default("student") // For future: student, TA, etc.
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  classId  String
+  userId   String
+  role     String   @default("student") // For future: student, TA, etc.
+  joinedAt DateTime @default(now())
 
   // Relations
   class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -82,14 +84,14 @@ model ClassMembership {
 }
 
 model InviteCode {
-  id         String    @id @default(cuid())
-  classId    String
-  code       String    @unique // 6-character alphanumeric code
-  isActive   Boolean   @default(true)
-  expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
-  createdBy  String    // Teacher user ID
-  usedCount  Int       @default(0) // Track how many students used this code
+  id        String    @id @default(cuid())
+  classId   String
+  code      String    @unique // 6-character alphanumeric code
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String // Teacher user ID
+  usedCount Int       @default(0) // Track how many students used this code
 
   // Relations
   class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -113,12 +115,12 @@ model ClassFile {
   id           String               @id @default(cuid())
   classId      String
   fileName     String
-  fileType     String               // "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", etc.
-  fileSize     Int                  // bytes
-  blobUrl      String               // Vercel Blob URL
-  uploadedBy   String               // userId
+  fileType     String // "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", etc.
+  fileSize     Int // bytes
+  blobUrl      String // Vercel Blob URL
+  uploadedBy   String // userId
   status       FileProcessingStatus @default(PENDING)
-  errorMessage String?              // if processing fails
+  errorMessage String? // if processing fails
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
@@ -132,42 +134,78 @@ model ClassFile {
 }
 
 enum ChunkType {
-  PARENT  // Large context chunks (2000-4000 tokens)
-  CHILD   // Search chunks (256-512 tokens)
+  PARENT // Large context chunks (2000-4000 tokens)
+  CHILD // Search chunks (256-512 tokens)
 }
 
 model FileChunk {
-  id         String                              @id @default(cuid())
+  id         String                       @id @default(cuid())
   fileId     String
-  classId    String                              // Denormalized for faster queries
-  content    String                              @db.Text // The actual text chunk
-  embedding  Unsupported("vector(1536)")?        // OpenAI text-embedding-3-small dimension (pgvector max: 2000)
-  chunkIndex Int                                 // Order within file
-  chunkType  ChunkType                           @default(CHILD) // PARENT or CHILD
-  parentId   String?                             // Reference to parent chunk if this is a CHILD
+  classId    String // Denormalized for faster queries
+  content    String                       @db.Text // The actual text chunk
+  embedding  Unsupported("vector(1536)")? // OpenAI text-embedding-3-small dimension (pgvector max: 2000)
+  chunkIndex Int // Order within file
+  chunkType  ChunkType                    @default(CHILD) // PARENT or CHILD
+  parentId   String? // Reference to parent chunk if this is a CHILD
 
   // Enhanced metadata for better retrieval
-  pageNumber Int?                                // PDF page number
-  section    String?                             // Chapter/section title
-  topic      String?                             // Auto-extracted topic tags
-  hasImages  Boolean                             @default(false) // Contains image descriptions
-  imageDesc  String?                             @db.Text // GPT-4o generated image descriptions
+  pageNumber Int? // PDF page number
+  section    String? // Chapter/section title
+  topic      String? // Auto-extracted topic tags
+  hasImages  Boolean @default(false) // Contains image descriptions
+  imageDesc  String? @db.Text // GPT-4o generated image descriptions
 
-  metadata   Json?                               // Additional flexible metadata
-  createdAt  DateTime                            @default(now())
+  metadata  Json? // Additional flexible metadata
+  createdAt DateTime @default(now())
 
   // Relations
-  file         ClassFile   @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  parent       FileChunk?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
-  children     FileChunk[] @relation("ParentChild")
+  file     ClassFile   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  parent   FileChunk?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
+  children FileChunk[] @relation("ParentChild")
+  // Vector index will be created with raw SQL after migration
+  // Full-text search index for BM25 will be added via raw SQL
 
   @@index([fileId])
   @@index([classId])
   @@index([parentId])
   @@index([chunkType])
   @@index([classId, chunkType]) // Fast queries for child chunks in a class
-  // Vector index will be created with raw SQL after migration
-  // Full-text search index for BM25 will be added via raw SQL
+}
+
+// ============================================================================
+// WORKSHEETS & SUBMISSIONS
+// ============================================================================
+
+model Worksheet {
+  id        String   @id @default(cuid())
+  classId   String
+  title     String
+  filePath  String // URL to the JSON file in Vercel Blob
+  createdAt DateTime @default(now())
+  createdBy String // User ID of the teacher
+
+  // Relations
+  class       Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  submissions WorksheetSubmission[]
+
+  @@index([classId])
+  @@index([createdBy])
+}
+
+model WorksheetSubmission {
+  id          String   @id @default(cuid())
+  worksheetId String
+  studentId   String
+  answers     Json // { "question_index": "student_answer", ... }
+  submittedAt DateTime @default(now())
+
+  // Relations
+  worksheet Worksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+  student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([worksheetId, studentId])
+  @@index([worksheetId])
+  @@index([studentId])
 }
 
 // ============================================================================
@@ -176,8 +214,8 @@ model FileChunk {
 
 model ChatConversation {
   id        String   @id @default(cuid())
-  userId    String   // Student who started the chat
-  classId   String   // Which class they're in
+  userId    String // Student who started the chat
+  classId   String // Which class they're in
   title     String   @default("New Conversation")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -195,7 +233,7 @@ model ChatConversation {
 model ChatMessage {
   id             String   @id @default(cuid())
   conversationId String
-  role           String   // "user" or "assistant"
+  role           String // "user" or "assistant"
   content        String   @db.Text
   createdAt      DateTime @default(now())
 

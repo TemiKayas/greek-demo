@@ -14,6 +14,7 @@ import { generateInviteQRCode } from '@/lib/utils/qr-code';
 import { FileUploadSection } from './components/FileUploadSection';
 import { FileList } from './components/FileList';
 import { ChatHistoryView } from './components/ChatHistoryView';
+import { WorksheetHome } from './components/WorksheetHome';
 
 type ClassDetails = {
   id: string;
@@ -66,6 +67,7 @@ type ClassDetails = {
     memberships: number;
     files: number;
     chatConversations: number;
+    worksheets: number;
   };
 };
 
@@ -77,11 +79,13 @@ export default function ClassDetailsPage() {
   const [classData, setClassData] = useState<ClassDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'history'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'students' | 'history' | 'worksheets'>('files');
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [selectedCode, setSelectedCode] = useState<{ code: string; qr: string } | null>(null);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const loadClassDetails = useCallback(async () => {
     setLoading(true);
@@ -102,6 +106,12 @@ export default function ClassDetailsPage() {
 
   function handleFileUploadComplete() {
     setRefreshTrigger((prev) => prev + 1);
+  }
+
+  function handleProcessingComplete() {
+    setToastMessage('All files have finished processing!');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 5000);
   }
 
   async function handleGenerateCode() {
@@ -234,6 +244,10 @@ export default function ClassDetailsPage() {
             <div className="stat-title text-primary-content/70">Chat Conversations</div>
             <div className="stat-value text-primary-content">{classData._count.chatConversations}</div>
           </div>
+          <div className="stat">
+            <div className="stat-title text-primary-content/70">Worksheets</div>
+            <div className="stat-value text-primary-content">{classData._count.worksheets}</div>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -256,6 +270,12 @@ export default function ClassDetailsPage() {
           >
             Chat History ({classData._count.chatConversations})
           </a>
+          <a
+            className={`tab ${activeTab === 'worksheets' ? 'tab-active bg-primary text-primary-content' : 'text-primary-content/80 hover:text-primary-content'}`}
+            onClick={() => setActiveTab('worksheets')}
+          >
+            Worksheets ({classData._count.worksheets})
+          </a>
         </div>
 
         {/* Files Tab */}
@@ -268,6 +288,7 @@ export default function ClassDetailsPage() {
             <FileList
               classId={classId}
               refreshTrigger={refreshTrigger}
+              onProcessingComplete={handleProcessingComplete}
             />
           </div>
         )}
@@ -372,6 +393,11 @@ export default function ClassDetailsPage() {
           <ChatHistoryView classId={classId} />
         )}
 
+        {/* Worksheets Tab */}
+        {activeTab === 'worksheets' && (
+            <WorksheetHome />
+        )}
+
         {/* QR Code Modal */}
         {showCodeModal && selectedCode && (
           <div className="modal modal-open">
@@ -428,6 +454,23 @@ export default function ClassDetailsPage() {
               className="modal-backdrop"
               onClick={() => setShowCodeModal(false)}
             ></div>
+          </div>
+        )}
+
+        {/* Toast Notification */}
+        {showToast && (
+          <div className="toast toast-top toast-end z-50">
+            <div className="alert alert-success shadow-lg">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{toastMessage}</span>
+              </div>
+              <button onClick={() => setShowToast(false)} className="btn btn-sm btn-ghost">
+                ✕
+              </button>
+            </div>
           </div>
         )}
       </div>
