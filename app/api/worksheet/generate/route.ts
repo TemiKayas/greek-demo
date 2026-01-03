@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { classId, prompt } = body;
+    const { classId, prompt, skipSave } = body;
 
     if (!classId || !prompt) {
       return NextResponse.json({ error: 'Missing classId or prompt' }, { status: 400 });
@@ -106,6 +106,10 @@ ${prompt}`;
         throw new Error("The AI model returned an invalid format. Please try again.");
     }
 
+    // If skipSave is true, just return the data for preview
+    if (skipSave) {
+      return NextResponse.json({ success: true, worksheetData });
+    }
 
     // 4. Save the worksheet
     const worksheetTitle = worksheetData.title || 'Untitled Worksheet';

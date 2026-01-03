@@ -177,30 +177,30 @@ export default function JoinClassPage() {
             </div>
           )}
 
-          <div className="bg-base-200 p-6 rounded-lg mb-6">
+          <div className="bg-base-100 border border-base-300 p-6 rounded-lg mb-6">
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-base-content/60">Class Name</p>
-                <p className="text-xl font-bold">{classData.name}</p>
+                <p className="text-xl font-bold text-base-content">{classData.name}</p>
               </div>
 
               {classData.description && (
                 <div>
                   <p className="text-sm text-base-content/60">Description</p>
-                  <p className="text-sm">{classData.description}</p>
+                  <p className="text-sm text-base-content">{classData.description}</p>
                 </div>
               )}
 
               {classData.teacher && (
                 <div>
                   <p className="text-sm text-base-content/60">Teacher</p>
-                  <p className="text-sm">{classData.teacher.name}</p>
+                  <p className="text-sm text-base-content">{classData.teacher.name}</p>
                 </div>
               )}
 
               <div>
                 <p className="text-sm text-base-content/60">Invite Code</p>
-                <p className="text-lg font-mono font-bold">{code}</p>
+                <p className="text-lg font-mono font-bold text-base-content">{code}</p>
               </div>
             </div>
           </div>

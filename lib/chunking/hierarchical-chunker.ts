@@ -277,10 +277,12 @@ export function createHierarchicalChunks(
 /**
  * Flatten child chunks for embedding/storage
  * Returns all child chunks with parent reference
+ * IMPORTANT: Renumbers chunk indices globally to ensure uniqueness across all parents
  */
 export function flattenChildChunks(parents: ParentChunk[]): Array<ChildChunk & { parentContent: string }> {
   const flattened: Array<ChildChunk & { parentContent: string }> = [];
 
+  // Collect all children first
   parents.forEach((parent) => {
     parent.children.forEach((child) => {
       flattened.push({
@@ -288,6 +290,13 @@ export function flattenChildChunks(parents: ParentChunk[]): Array<ChildChunk & {
         parentContent: parent.content,
       });
     });
+  });
+
+  // Renumber chunk indices globally to ensure uniqueness
+  // Each parent creates children with indices 0, 1, 2... causing duplicates
+  // We need to renumber them globally: 0, 1, 2, 3, 4, 5...
+  flattened.forEach((child, globalIndex) => {
+    child.chunkIndex = globalIndex;
   });
 
   return flattened;

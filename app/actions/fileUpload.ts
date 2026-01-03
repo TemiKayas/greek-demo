@@ -762,18 +762,46 @@ export async function deleteClassFile(
       return { success: false, error: 'Unauthorized' };
     }
 
+    // Count chunks before deletion (for logging)
+    const chunkCount = await db.fileChunk.count({
+      where: { fileId },
+    });
+
+    console.log(`[Delete File] Deleting file: ${file.fileName}`);
+    console.log(`[Delete File]   - File ID: ${fileId}`);
+    console.log(`[Delete File]   - Blob URL: ${file.blobUrl}`);
+    console.log(`[Delete File]   - Chunks to delete: ${chunkCount}`);
+
     // Delete from Vercel Blob
     try {
       await del(file.blobUrl);
+      console.log(`[Delete File] ✓ Deleted from blob storage`);
     } catch (error) {
-      console.error('Error deleting from blob:', error);
+      console.error('[Delete File] ✗ Error deleting from blob:', error);
       // Continue even if blob deletion fails
     }
 
-    // Delete from database (cascades to chunks)
+    // Delete from database (cascades to chunks via schema.prisma:162)
     await db.classFile.delete({
       where: { id: fileId },
     });
+
+    // Verify chunks were deleted
+    const remainingChunks = await db.fileChunk.count({
+      where: { fileId },
+    });
+
+    console.log(`[Delete File] ✓ Deleted from database`);
+    console.log(`[Delete File] ✓ Cascade deleted ${chunkCount} chunks (${remainingChunks} remaining - should be 0)`);
+
+    if (remainingChunks > 0) {
+      console.error(`[Delete File] ⚠️ WARNING: ${remainingChunks} chunks still exist after cascade delete!`);
+      // Force delete remaining chunks
+      await db.fileChunk.deleteMany({
+        where: { fileId },
+      });
+      console.log(`[Delete File] ✓ Force deleted remaining chunks`);
+    }
 
     revalidatePath(`/classes/${file.classId}`);
 

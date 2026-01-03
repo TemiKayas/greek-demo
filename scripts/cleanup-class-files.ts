@@ -7,6 +7,7 @@ import { db } from '../lib/db';
 import { del } from '@vercel/blob';
 
 const CLASS_ID = 'cmjpwtz5v00021imra4xp7ne2';
+const FILE_ID = 'cmjxfjcqt00018ol77pu7uya4'; // Optional: clean up specific file
 
 async function cleanupClassFiles() {
   console.log(`🧹 Cleaning up all files for class ${CLASS_ID}...`);

@@ -12,11 +12,21 @@ const loadingMessages = [
   'Almost there...',
 ];
 
-type WorksheetGeneratorProps = {
-  onWorksheetCreated: () => void;
+type WorksheetData = {
+  title: string;
+  questions: Array<{
+    question_text: string;
+    type: 'multiple_choice' | 'true_false' | 'short_answer' | 'paragraph';
+    options?: string[];
+    right_answer: string | null;
+  }>;
 };
 
-export function WorksheetGenerator({ onWorksheetCreated }: WorksheetGeneratorProps) {
+type WorksheetGeneratorProps = {
+  onWorksheetGenerated: (data: WorksheetData) => void;
+};
+
+export function WorksheetGenerator({ onWorksheetGenerated }: WorksheetGeneratorProps) {
   const params = useParams();
   const classId = params?.classId as string;
   const [prompt, setPrompt] = useState('');
@@ -53,7 +63,7 @@ export function WorksheetGenerator({ onWorksheetCreated }: WorksheetGeneratorPro
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ classId, prompt }),
+        body: JSON.stringify({ classId, prompt, skipSave: true }), // Don't save yet, just generate
       });
 
       if (!response.ok) {
@@ -61,7 +71,8 @@ export function WorksheetGenerator({ onWorksheetCreated }: WorksheetGeneratorPro
         throw new Error(errorData.error || 'Failed to generate worksheet');
       }
 
-      onWorksheetCreated();
+      const result = await response.json();
+      onWorksheetGenerated(result.worksheetData); // Pass data to preview
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -72,14 +83,14 @@ export function WorksheetGenerator({ onWorksheetCreated }: WorksheetGeneratorPro
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="prompt" className="block text-sm font-medium text-primary-content/80 mb-2">
+        <label htmlFor="prompt" className="block text-sm font-medium text-base-content mb-2">
           Worksheet Prompt
         </label>
         <textarea
           id="prompt"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="textarea textarea-bordered w-full h-32"
+          className="textarea textarea-bordered w-full h-32 bg-base-100 text-base-content border-base-300 focus:border-primary focus:outline-none"
           placeholder="e.g., 'Create a 10-question worksheet about the process of photosynthesis, including multiple choice and short answer questions.'"
           disabled={generating}
         />
@@ -90,7 +101,7 @@ export function WorksheetGenerator({ onWorksheetCreated }: WorksheetGeneratorPro
       {generating ? (
         <div className="text-center p-4">
           <span className="loading loading-spinner loading-lg text-primary mb-4"></span>
-          <p className="text-primary-content/80">
+          <p className="text-base-content">
             {loadingMessages[currentMessageIndex]}
           </p>
         </div>

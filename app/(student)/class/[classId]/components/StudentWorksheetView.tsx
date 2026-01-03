@@ -73,20 +73,20 @@ export function StudentWorksheetView({ worksheet, onBack }: StudentWorksheetView
   return (
     <div className="p-4">
       <button onClick={onBack} className="btn btn-outline mb-4">← Back to List</button>
-      <h2 className="text-3xl font-bold mb-6">{worksheetData.title}</h2>
+      <h2 className="text-3xl font-bold mb-6 text-base-content">{worksheetData.title}</h2>
 
       <div className="space-y-8">
         {worksheetData.questions.map((q, index) => (
-          <div key={index} className="card bg-base-200 shadow-md">
+          <div key={index} className="card bg-base-100 border border-base-300 shadow-md">
             <div className="card-body">
-              <p className="font-semibold text-lg">{index + 1}. {q.question_text}</p>
-              
+              <p className="font-semibold text-lg text-base-content">{index + 1}. {q.question_text}</p>
+
               {q.type === 'multiple_choice' && q.options && (
                 <div className="space-y-2 mt-2">
                   {q.options.map((option, i) => (
                     <div key={i} className="form-control">
                       <label className="label cursor-pointer">
-                        <span className="label-text">{option}</span>
+                        <span className="label-text text-base-content">{option}</span>
                         <input
                           type="radio"
                           name={`question-${index}`}
@@ -104,13 +104,13 @@ export function StudentWorksheetView({ worksheet, onBack }: StudentWorksheetView
                 <div className="space-y-2 mt-2">
                   <div className="form-control">
                     <label className="label cursor-pointer">
-                      <span className="label-text">True</span>
+                      <span className="label-text text-base-content">True</span>
                       <input type="radio" name={`question-${index}`} className="radio checked:bg-primary" value="True" onChange={(e) => handleAnswerChange(index, e.target.value)} />
                     </label>
                   </div>
                   <div className="form-control">
                     <label className="label cursor-pointer">
-                      <span className="label-text">False</span>
+                      <span className="label-text text-base-content">False</span>
                       <input type="radio" name={`question-${index}`} className="radio checked:bg-error" value="False" onChange={(e) => handleAnswerChange(index, e.target.value)} />
                     </label>
                   </div>
@@ -120,14 +120,14 @@ export function StudentWorksheetView({ worksheet, onBack }: StudentWorksheetView
               {q.type === 'short_answer' && (
                 <input
                   type="text"
-                  className="input input-bordered w-full mt-2"
+                  className="input input-bordered w-full mt-2 bg-base-100 text-base-content"
                   onChange={(e) => handleAnswerChange(index, e.target.value)}
                 />
               )}
 
               {q.type === 'paragraph' && (
                 <textarea
-                  className="textarea textarea-bordered w-full h-32 mt-2"
+                  className="textarea textarea-bordered w-full h-32 mt-2 bg-base-100 text-base-content"
                   onChange={(e) => handleAnswerChange(index, e.target.value)}
                 ></textarea>
               )}

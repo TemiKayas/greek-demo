@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { del } from '@vercel/blob';
 
 const GetWorksheetsSchema = z.object({
   classId: z.string(),
@@ -191,5 +192,65 @@ export async function getWorksheetSubmissions(worksheetId: string) {
     } catch (error) {
         console.error('Error getting submissions:', error);
         return { success: false, error: 'Failed to get submissions' };
+    }
+}
+
+const DeleteWorksheetSchema = z.object({
+    worksheetId: z.string(),
+});
+
+export async function deleteWorksheet(worksheetId: string) {
+    try {
+        const session = await auth();
+        if (!session?.user || session.user.role !== 'TEACHER') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        const validatedData = DeleteWorksheetSchema.safeParse({ worksheetId });
+        if (!validatedData.success) {
+            return { success: false, error: 'Invalid input' };
+        }
+
+        // Get worksheet with submissions count
+        const worksheet = await db.worksheet.findUnique({
+            where: { id: validatedData.data.worksheetId },
+            include: {
+                _count: {
+                    select: { submissions: true },
+                },
+            },
+        });
+
+        if (!worksheet || worksheet.createdBy !== session.user.id) {
+            return { success: false, error: 'Worksheet not found or you are not the creator' };
+        }
+
+        console.log(`[Delete Worksheet] Deleting worksheet: ${worksheet.title}`);
+        console.log(`[Delete Worksheet]   - Worksheet ID: ${worksheetId}`);
+        console.log(`[Delete Worksheet]   - File URL: ${worksheet.filePath}`);
+        console.log(`[Delete Worksheet]   - Submissions to delete: ${worksheet._count.submissions}`);
+
+        // Delete from Vercel Blob
+        try {
+            await del(worksheet.filePath);
+            console.log(`[Delete Worksheet] ✓ Deleted from blob storage`);
+        } catch (error) {
+            console.error('[Delete Worksheet] ✗ Error deleting from blob:', error);
+            // Continue even if blob deletion fails
+        }
+
+        // Delete from database (cascades to submissions via schema.prisma)
+        await db.worksheet.delete({
+            where: { id: validatedData.data.worksheetId },
+        });
+
+        console.log(`[Delete Worksheet] ✓ Deleted from database`);
+        console.log(`[Delete Worksheet] ✓ Cascade deleted ${worksheet._count.submissions} submissions`);
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error deleting worksheet:', error);
+        return { success: false, error: 'Failed to delete worksheet' };
     }
 }
