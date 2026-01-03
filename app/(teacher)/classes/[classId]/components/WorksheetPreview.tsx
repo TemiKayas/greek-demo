@@ -103,6 +103,49 @@ export function WorksheetPreview({
     }));
   }
 
+  function moveQuestionUp(questionIndex: number) {
+    if (questionIndex === 0) return; // Already at top
+    setWorksheetData(prev => {
+      const newQuestions = [...prev.questions];
+      [newQuestions[questionIndex - 1], newQuestions[questionIndex]] =
+      [newQuestions[questionIndex], newQuestions[questionIndex - 1]];
+      return { ...prev, questions: newQuestions };
+    });
+  }
+
+  function moveQuestionDown(questionIndex: number) {
+    if (questionIndex === worksheetData.questions.length - 1) return; // Already at bottom
+    setWorksheetData(prev => {
+      const newQuestions = [...prev.questions];
+      [newQuestions[questionIndex], newQuestions[questionIndex + 1]] =
+      [newQuestions[questionIndex + 1], newQuestions[questionIndex]];
+      return { ...prev, questions: newQuestions };
+    });
+  }
+
+  function addNewQuestion(type: 'multiple_choice' | 'true_false' | 'short_answer' | 'paragraph') {
+    const newQuestion: Question = {
+      question_text: '',
+      type,
+      right_answer: null,
+    };
+
+    if (type === 'multiple_choice') {
+      newQuestion.options = ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+      newQuestion.right_answer = 'Option 1';
+    } else if (type === 'true_false') {
+      newQuestion.right_answer = 'True';
+    }
+
+    setWorksheetData(prev => ({
+      ...prev,
+      questions: [...prev.questions, newQuestion],
+    }));
+
+    // Automatically start editing the new question
+    setEditingQuestionIndex(worksheetData.questions.length);
+  }
+
   async function handleRegenerateQuestion(questionIndex: number) {
     if (!regeneratePrompt.trim()) {
       alert('Please enter a prompt for regenerating this question');
@@ -195,6 +238,22 @@ export function WorksheetPreview({
               <div className="flex justify-between items-start mb-4">
                 <h3 className="font-bold text-base-content">Question {qIndex + 1}</h3>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => moveQuestionUp(qIndex)}
+                    className="btn btn-sm btn-ghost"
+                    disabled={qIndex === 0}
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveQuestionDown(qIndex)}
+                    className="btn btn-sm btn-ghost"
+                    disabled={qIndex === worksheetData.questions.length - 1}
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
                   <button
                     onClick={() => setEditingQuestionIndex(editingQuestionIndex === qIndex ? null : qIndex)}
                     className="btn btn-sm btn-ghost"
@@ -366,9 +425,54 @@ export function WorksheetPreview({
 
       {worksheetData.questions.length === 0 && (
         <div className="text-center py-12 text-base-content/60">
-          No questions in this worksheet. All questions were deleted.
+          No questions in this worksheet yet. Add your first question below.
         </div>
       )}
+
+      {/* Add New Question Section */}
+      <div className="card bg-base-100 border-2 border-dashed border-base-300 shadow-sm">
+        <div className="card-body">
+          <h3 className="font-bold text-base-content mb-4">Add New Question</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button
+              onClick={() => addNewQuestion('multiple_choice')}
+              className="btn btn-outline border-primary text-primary hover:bg-primary hover:text-primary-content"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Multiple Choice
+            </button>
+            <button
+              onClick={() => addNewQuestion('true_false')}
+              className="btn btn-outline border-primary text-primary hover:bg-primary hover:text-primary-content"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              True/False
+            </button>
+            <button
+              onClick={() => addNewQuestion('short_answer')}
+              className="btn btn-outline border-primary text-primary hover:bg-primary hover:text-primary-content"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Short Answer
+            </button>
+            <button
+              onClick={() => addNewQuestion('paragraph')}
+              className="btn btn-outline border-primary text-primary hover:bg-primary hover:text-primary-content"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              Paragraph
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

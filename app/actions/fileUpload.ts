@@ -8,7 +8,7 @@ import { extractPDFWithPages, detectSectionHeading } from '@/lib/extractors/pdf-
 import { createHierarchicalChunks, flattenChildChunks } from '@/lib/chunking/hierarchical-chunker';
 import { embedBatch, extractImageDescription } from '@/lib/openai';
 import { revalidatePath } from 'next/cache';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 // Types
 type ActionResult<T = void> =
@@ -535,39 +535,24 @@ async function processFileInBackground(fileId: string): Promise<void> {
     // Store all chunks in database with parent-child relationships
     console.log('[RAG 2.0 Processing] Storing chunks in database...');
 
+    // Split into multiple smaller transactions for better performance and reliability
+    const parentIdMap = new Map<number, string>(); // Map parent index to DB ID
+    const BATCH_SIZE = 200;
+
+    // Transaction 1: Insert all parent chunks
+    console.log('[RAG 2.0 Processing] Inserting parent chunks...');
     await db.$transaction(async (tx) => {
-      // First, insert all parent chunks (no embeddings - we don't search these)
-      const parentIdMap = new Map<number, string>(); // Map parent index to DB ID
+      for (let batchStart = 0; batchStart < hierarchicalChunks.length; batchStart += BATCH_SIZE) {
+        const batch = hierarchicalChunks.slice(batchStart, batchStart + BATCH_SIZE);
 
-      for (const parent of hierarchicalChunks) {
-        // Detect section heading for this parent
-        const section = detectSectionHeading(parent.content) || undefined;
+        // Build multi-value INSERT for this batch
+        const valuesClauses = batch.map((parent) => {
+          const section = detectSectionHeading(parent.content) || null;
+          const pageNumber = pageMap.get(parent.metadata.startChar) || null;
+          const parentId = `parent_${fileId}_${parent.chunkIndex}`;
+          parentIdMap.set(parent.chunkIndex, parentId);
 
-        // Determine page number for this parent (use start position)
-        const pageNumber = pageMap.get(parent.metadata.startChar) || null;
-
-        const parentId = `parent_${fileId}_${parent.chunkIndex}`;
-        parentIdMap.set(parent.chunkIndex, parentId);
-
-        await tx.$executeRaw`
-          INSERT INTO "FileChunk" (
-            id,
-            "fileId",
-            "classId",
-            content,
-            embedding,
-            "chunkIndex",
-            "chunkType",
-            "parentId",
-            "pageNumber",
-            section,
-            topic,
-            "hasImages",
-            "imageDesc",
-            metadata,
-            "createdAt"
-          )
-          VALUES (
+          return Prisma.sql`(
             ${parentId},
             ${fileId},
             ${file.classId},
@@ -583,40 +568,45 @@ async function processFileInBackground(fileId: string): Promise<void> {
             NULL,
             ${JSON.stringify(parent.metadata)}::jsonb,
             NOW()
-          )
-        `;
-      }
+          )`;
+        });
 
-      // Then, insert all child chunks with embeddings and parent links
-      for (let i = 0; i < childChunks.length; i++) {
-        const child = childChunks[i];
-        const embedding = childEmbeddings[i];
-        const parentId = parentIdMap.get(child.parentIndex)!;
-
-        // Determine page number for this child
-        const pageNumber = pageMap.get(child.metadata.startChar) || null;
-
-        const childId = `child_${fileId}_${child.chunkIndex}`;
-
+        // Execute single INSERT with multiple value rows
         await tx.$executeRaw`
           INSERT INTO "FileChunk" (
-            id,
-            "fileId",
-            "classId",
-            content,
-            embedding,
-            "chunkIndex",
-            "chunkType",
-            "parentId",
-            "pageNumber",
-            section,
-            topic,
-            "hasImages",
-            "imageDesc",
-            metadata,
-            "createdAt"
+            id, "fileId", "classId", content, embedding, "chunkIndex",
+            "chunkType", "parentId", "pageNumber", section, topic,
+            "hasImages", "imageDesc", metadata, "createdAt"
           )
-          VALUES (
+          VALUES ${Prisma.join(valuesClauses)}
+        `;
+      }
+    }, {
+      timeout: 30000, // 30 seconds should be plenty for parent chunks
+    });
+
+    // Transactions 2+: Insert child chunks in separate transactions (one per batch)
+    // This prevents timeout issues on very large files
+    console.log('[RAG 2.0 Processing] Inserting child chunks...');
+    const totalBatches = Math.ceil(childChunks.length / BATCH_SIZE);
+
+    for (let batchStart = 0; batchStart < childChunks.length; batchStart += BATCH_SIZE) {
+      const batchNum = Math.floor(batchStart / BATCH_SIZE) + 1;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, childChunks.length);
+      const batch = childChunks.slice(batchStart, batchEnd);
+
+      console.log(`[RAG 2.0 Processing] Inserting child batch ${batchNum}/${totalBatches} (${batch.length} chunks)`);
+
+      await db.$transaction(async (tx) => {
+        // Build multi-value INSERT for this batch
+        const valuesClauses = batch.map((child, batchIdx) => {
+          const i = batchStart + batchIdx;
+          const embedding = childEmbeddings[i];
+          const parentId = parentIdMap.get(child.parentIndex)!;
+          const pageNumber = pageMap.get(child.metadata.startChar) || null;
+          const childId = `child_${fileId}_${child.chunkIndex}`;
+
+          return Prisma.sql`(
             ${childId},
             ${fileId},
             ${file.classId},
@@ -632,10 +622,22 @@ async function processFileInBackground(fileId: string): Promise<void> {
             ${child.imageDesc || null},
             ${JSON.stringify(child.metadata)}::jsonb,
             NOW()
+          )`;
+        });
+
+        // Execute single INSERT with multiple value rows
+        await tx.$executeRaw`
+          INSERT INTO "FileChunk" (
+            id, "fileId", "classId", content, embedding, "chunkIndex",
+            "chunkType", "parentId", "pageNumber", section, topic,
+            "hasImages", "imageDesc", metadata, "createdAt"
           )
+          VALUES ${Prisma.join(valuesClauses)}
         `;
-      }
-    });
+      }, {
+        timeout: 30000, // 30 seconds per batch should be plenty
+      });
+    }
 
     console.log(`[RAG 2.0 Processing] Successfully processed ${file.fileName}`);
     console.log(`  - ${hierarchicalChunks.length} parent chunks (full context)`);
