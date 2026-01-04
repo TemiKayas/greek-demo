@@ -61,21 +61,21 @@ export function TeacherWorksheetView({ worksheet, onBack }: TeacherWorksheetView
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th>Student Email</th>
-                  <th>Submitted At</th>
-                  <th>Actions</th>
+                <tr className="text-primary-content">
+                  <th className="text-primary-content">Student Name</th>
+                  <th className="text-primary-content">Student Email</th>
+                  <th className="text-primary-content">Submitted At</th>
+                  <th className="text-primary-content">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {submissions.map(sub => (
-                  <tr key={sub.id}>
-                    <td>{sub.student.name}</td>
-                    <td>{sub.student.email}</td>
-                    <td>{new Date(sub.submittedAt).toLocaleString()}</td>
+                  <tr key={sub.id} className="text-primary-content/90 hover:bg-base-300">
+                    <td className="text-primary-content">{sub.student.name}</td>
+                    <td className="text-primary-content">{sub.student.email}</td>
+                    <td className="text-primary-content">{new Date(sub.submittedAt).toLocaleString()}</td>
                     <td>
-                      <button 
+                      <button
                         className="btn btn-sm btn-primary"
                         onClick={() => setSelectedSubmission(sub)}
                       >

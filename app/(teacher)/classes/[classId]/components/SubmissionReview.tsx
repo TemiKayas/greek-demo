@@ -81,20 +81,20 @@ export function SubmissionReview({ submission, worksheet, onBack }: SubmissionRe
             }
             return (
               <div key={index} className="border border-base-content/20 rounded-lg p-4">
-                <p className="font-semibold text-lg">{index + 1}. {q.question_text}</p>
-                
+                <p className="font-semibold text-lg text-primary-content">{index + 1}. {q.question_text}</p>
+
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-bold">Student's Answer</h4>
+                    <h4 className="font-bold text-primary-content">Student's Answer</h4>
                     <p className={`p-2 rounded ${
-                      q.type === 'paragraph' ? '' : (isCorrect ? 'bg-success/20 text-success-content' : 'bg-error/20 text-error-content')
+                      q.type === 'paragraph' ? 'text-primary-content' : (isCorrect ? 'bg-success/20 text-success-content' : 'bg-error/20 text-error-content')
                     }`}>
                       {studentAnswer}
                     </p>
                   </div>
                   {q.type !== 'paragraph' && (
                     <div>
-                      <h4 className="font-bold">Correct Answer</h4>
+                      <h4 className="font-bold text-primary-content">Correct Answer</h4>
                       <p className="p-2 rounded bg-info/20 text-info-content">{q.right_answer || 'N/A'}</p>
                     </div>
                   )}

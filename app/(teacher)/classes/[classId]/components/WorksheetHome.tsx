@@ -6,7 +6,6 @@ import { getWorksheetsForClass, deleteWorksheet } from '@/app/actions/worksheet'
 import { WorksheetGenerator } from './WorksheetGenerator';
 import { TeacherWorksheetView } from './TeacherWorksheetView';
 import { WorksheetPreview } from './WorksheetPreview';
-import { put } from '@vercel/blob';
 
 type Worksheet = {
   id: string;
@@ -58,27 +57,20 @@ export function WorksheetHome() {
 
   async function handleSaveNewWorksheet(data: WorksheetData) {
     try {
-      // Save to blob storage
-      const uniqueId = crypto.randomUUID();
-      const fileName = `worksheets/${classId}/${uniqueId}.json`;
-      const blob = await put(fileName, JSON.stringify(data), {
-        access: 'public',
-        addRandomSuffix: false,
-      });
-
-      // Create database record
+      // Send worksheet data to API (server will upload to blob and save to database)
       const response = await fetch('/api/worksheet/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           classId,
           title: data.title,
-          filePath: blob.url,
+          worksheetData: data,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save worksheet');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save worksheet');
       }
 
       // Clear preview and reload list
@@ -94,31 +86,20 @@ export function WorksheetHome() {
     if (!previewingWorksheet) return;
 
     try {
-      // Update blob storage
-      const response = await fetch(previewingWorksheet.filePath);
-      const existingData = await response.json();
-
-      // Re-upload with same path
-      const fileName = previewingWorksheet.filePath.split('/').slice(-2).join('/');
-      await put(fileName, JSON.stringify(data), {
-        access: 'public',
-        addRandomSuffix: false,
+      // Send updated worksheet data to API (server will update blob and database)
+      const updateResponse = await fetch('/api/worksheet/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          worksheetId: previewingWorksheet.id,
+          title: data.title,
+          worksheetData: data,
+        }),
       });
 
-      // Update database if title changed
-      if (data.title !== previewingWorksheet.title) {
-        const updateResponse = await fetch('/api/worksheet/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            worksheetId: previewingWorksheet.id,
-            title: data.title,
-          }),
-        });
-
-        if (!updateResponse.ok) {
-          throw new Error('Failed to update worksheet');
-        }
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.error || 'Failed to update worksheet');
       }
 
       // Clear preview and reload

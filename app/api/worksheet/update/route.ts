@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { put } from '@vercel/blob';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,10 +11,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { worksheetId, title } = body;
+    const { worksheetId, title, worksheetData } = body;
 
-    if (!worksheetId || !title) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!worksheetId) {
+      return NextResponse.json({ error: 'Missing worksheetId' }, { status: 400 });
     }
 
     // Verify worksheet ownership
@@ -25,11 +26,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Worksheet not found or you are not the creator' }, { status: 403 });
     }
 
-    // Update worksheet
-    const updatedWorksheet = await db.worksheet.update({
-      where: { id: worksheetId },
-      data: { title },
-    });
+    // If worksheetData is provided, update the blob
+    if (worksheetData) {
+      // Extract filename from existing filePath
+      const fileName = worksheet.filePath.split('/').slice(-2).join('/');
+
+      // Re-upload to blob storage (overwrites existing)
+      await put(fileName, JSON.stringify(worksheetData), {
+        access: 'public',
+        addRandomSuffix: false,
+      });
+    }
+
+    // Update database if title changed
+    const updateData: { title?: string } = {};
+    if (title && title !== worksheet.title) {
+      updateData.title = title;
+    }
+
+    let updatedWorksheet = worksheet;
+    if (Object.keys(updateData).length > 0) {
+      updatedWorksheet = await db.worksheet.update({
+        where: { id: worksheetId },
+        data: updateData,
+      });
+    }
 
     return NextResponse.json({ success: true, worksheet: updatedWorksheet });
 

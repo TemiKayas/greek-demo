@@ -82,11 +82,6 @@ export async function getWorksheetsForStudent(classId: string) {
     }
 }
 
-const SubmitWorksheetSchema = z.object({
-    worksheetId: z.string(),
-    answers: z.record(z.string()),
-});
-
 export async function submitWorksheet(worksheetId: string, answers: Record<number, string>) {
     try {
         const session = await auth();
@@ -94,13 +89,17 @@ export async function submitWorksheet(worksheetId: string, answers: Record<numbe
             return { success: false, error: 'Unauthorized' };
         }
 
-        const validatedData = SubmitWorksheetSchema.safeParse({ worksheetId, answers });
-        if (!validatedData.success) {
-            return { success: false, error: 'Invalid input' };
+        // Validate input
+        if (!worksheetId || typeof worksheetId !== 'string') {
+            return { success: false, error: 'Invalid worksheet ID' };
+        }
+
+        if (!answers || typeof answers !== 'object') {
+            return { success: false, error: 'Invalid answers format' };
         }
 
         const worksheet = await db.worksheet.findUnique({
-            where: { id: validatedData.data.worksheetId },
+            where: { id: worksheetId },
             select: { classId: true }
         });
 
@@ -119,21 +118,24 @@ export async function submitWorksheet(worksheetId: string, answers: Record<numbe
             return { success: false, error: 'You are not a member of this class' };
         }
 
+        // Convert answers object to JSON-compatible format
+        const answersJson = JSON.parse(JSON.stringify(answers));
+
         await db.worksheetSubmission.upsert({
             where: {
                 worksheetId_studentId: {
-                    worksheetId: validatedData.data.worksheetId,
+                    worksheetId: worksheetId,
                     studentId: session.user.id,
                 },
             },
             update: {
-                answers: validatedData.data.answers,
+                answers: answersJson,
                 submittedAt: new Date(),
             },
             create: {
-                worksheetId: validatedData.data.worksheetId,
+                worksheetId: worksheetId,
                 studentId: session.user.id,
-                answers: validatedData.data.answers,
+                answers: answersJson,
             },
         });
 

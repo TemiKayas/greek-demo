@@ -296,7 +296,7 @@ Respond in this exact JSON format:
       messages: [
         {
           role: 'system',
-          content: 'You are a precise relevance scoring system. Return only valid JSON.',
+          content: 'You are a precise relevance scoring system. Return only valid JSON. Escape all quotes in reasoning text.',
         },
         {
           role: 'user',
@@ -304,11 +304,31 @@ Respond in this exact JSON format:
         },
       ],
       temperature: 0.2, // Low temperature for consistent scoring
-      max_tokens: 1500,
+      max_tokens: 2000, // Increased for 50 chunks
       response_format: { type: 'json_object' },
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{"scores":[]}');
+    const rawContent = response.choices[0].message.content || '{"scores":[]}';
+
+    let result;
+    try {
+      result = JSON.parse(rawContent);
+    } catch (parseError) {
+      console.error('[Reranking] JSON parse failed, attempting cleanup:', parseError);
+      // Try to fix common JSON issues
+      const cleaned = rawContent
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/\\'/g, "'") // Fix escaped single quotes
+        .replace(/([^\\])"/g, '$1\\"'); // Escape unescaped quotes (careful approach)
+
+      try {
+        result = JSON.parse(cleaned);
+      } catch (secondError) {
+        console.error('[Reranking] Cleanup failed, using fallback');
+        throw secondError; // Will hit catch block below
+      }
+    }
+
     const scores = result.scores as Array<{ passage: number; score: number; reasoning: string }>;
 
     // Convert to index-based results (passage numbers are 1-indexed)
@@ -328,13 +348,16 @@ Respond in this exact JSON format:
     return finalResults;
   } catch (error) {
     console.error('[Reranking] Error:', error);
-    // Fallback: return original order with neutral scores
+    // Fallback: return original order with neutral scores, limited to topK
     console.warn('[Reranking] Falling back to original order');
-    return chunks.map((_, index) => ({
+    const fallbackResults = chunks.map((_, index) => ({
       index,
       score: 5,
       reasoning: 'Reranking failed, using original order',
     }));
+
+    // Respect topK even in fallback
+    return topK ? fallbackResults.slice(0, topK) : fallbackResults;
   }
 }
 

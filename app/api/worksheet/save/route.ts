@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { put } from '@vercel/blob';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,9 +11,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { classId, title, filePath } = body;
+    const { classId, title, filePath, worksheetData } = body;
 
-    if (!classId || !title || !filePath) {
+    // Check if this is a new worksheet (with data) or existing (with filePath)
+    if (!classId || !title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -25,12 +27,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Class not found or you are not the teacher' }, { status: 403 });
     }
 
+    let finalFilePath = filePath;
+
+    // If worksheetData is provided, upload to blob storage first
+    if (worksheetData) {
+      const uniqueId = crypto.randomUUID();
+      const fileName = `worksheets/${classId}/${uniqueId}.json`;
+
+      const blob = await put(fileName, JSON.stringify(worksheetData), {
+        access: 'public',
+        addRandomSuffix: false,
+      });
+
+      finalFilePath = blob.url;
+    }
+
+    if (!finalFilePath) {
+      return NextResponse.json({ error: 'No file path or worksheet data provided' }, { status: 400 });
+    }
+
     // Create worksheet record
     const worksheet = await db.worksheet.create({
       data: {
         classId,
         title,
-        filePath,
+        filePath: finalFilePath,
         createdBy: session.user.id,
       },
     });
