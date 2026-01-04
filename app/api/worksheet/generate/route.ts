@@ -192,19 +192,17 @@ Remember: Order questions from easiest (true/false) to hardest (paragraph). Make
         throw new Error("The AI model returned an invalid format. Please try again.");
     }
 
-    // 7. Validate question count
+    // 7. Validate that questions exist
     if (!worksheetData.questions) {
       throw new Error(worksheetData.error || 'Failed to generate worksheet - no questions returned');
     }
 
+    // Log if question count doesn't match, but allow it
     if (worksheetData.questions.length !== questionCount) {
-      console.error(`[Worksheet Generation] Expected ${questionCount} questions, got ${worksheetData.questions.length}`);
-      return NextResponse.json({
-        error: `The AI generated ${worksheetData.questions.length} questions instead of ${questionCount}. Please try again with a more specific prompt or adjust the question count.`
-      }, { status: 400 });
+      console.warn(`[Worksheet Generation] Requested ${questionCount} questions, generated ${worksheetData.questions.length}`);
     }
 
-    console.log(`[Worksheet Generation] Successfully generated ${questionCount} questions`);
+    console.log(`[Worksheet Generation] Successfully generated ${worksheetData.questions.length} questions`);
 
     // If skipSave is true, just return the data for preview
     if (skipSave) {
